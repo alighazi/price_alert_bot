@@ -14,7 +14,7 @@ except:
 DefaultFiat = "EUR"
 print ("db at start")
 print(db)
-
+last_update = db['last_update'] if 'last_update' in db else 0
 
 def getPrice(fsym, tsym):
     url = "https://min-api.cryptocompare.com/data/price?fsym={}&tsyms={}".format(
@@ -128,75 +128,7 @@ def processMessage(message):
     else:
         sendMessage('Invalid command',chatId)
 
-
-last_update = db['last_update'] if 'last_update' in db else 0
-#price = getPrice("ETH", "EUR")
-# print(price)
-# t=getTop()
-
-
-def dsendMessage(s, c):
-    print(s+c)
-
-
-def test_lower(command):
-    parts = command.split()
-    chatId = 123
-    if len(parts) < 3 or len(parts) > 4:
-        dsendMessage("invalid command", chatId)
-        return
-    fsym = parts[1]
-    if not fsym in symbols.symbols:
-        dsendMessage("invalid symbol", chatId)
-        return
-    try:
-        target = int(parts[2])
-    except ValueError:
-        dsendMessage("invalid symbol", chatId)
-        return
-    tsym = parts[3] if len(parts) > 3 else DefaultFiat
-    alerts = db[chatId] if chatId in db else {}
-    if fsym in alerts:
-        alerts[fsym]['lower'] = '{} {}'.format(target, tsym)
-    else:
-        alerts[fsym] = {'lower': '{} {}'.format(target, tsym)}
-    db[chatId] = alerts
-
-
-def test_higher(command):
-    parts = command.split()
-    chatId = 123
-    if len(parts) < 3 or len(parts) > 4:
-        dsendMessage("invalid command", chatId)
-        return
-    fsym = parts[1]
-    if not fsym in symbols.symbols:
-        dsendMessage("invalid symbol", chatId)
-        return
-    try:
-        target = int(parts[2])
-    except ValueError:
-        dsendMessage("invalid symbol", chatId)
-        return
-    tsym = parts[3] if len(parts) > 3 else DefaultFiat
-    alerts = db[chatId] if chatId in db else {}
-    if fsym in alerts:
-        alerts[fsym]['higher'] = '{} {}'.format(target, tsym)
-    else:
-        alerts[fsym] = {'higher': '{} {}'.format(target, tsym)}
-
-    db[chatId] = alerts
-
-
-# test_lower("lower ZEC 99 USD")
-# test_lower("lower BTC 2000 EUR")
-# test_lower("lower ETH 30000 SEC")
-# test_lower("lower LTC 400")
-# test_higher("higher ZEC 500 USD")
-# test_higher("higher BTC 6000 EUR")
-# test_higher("higher ETH 70000 SEC")
-# test_higher("higher LTC 800")
-# print(db[123])
+#main loop
 while True:
     updates = getUpdates(last_update+1)
     print(updates.text)
