@@ -1,16 +1,19 @@
 import requests
 import sys
+import time
 import pickle
 import symbols
 
 tgToken = '404889667:AAEZAEMoqItZw0M9IMjGO1OtTp17eMZdqp4'
-dbFileName='db.json'
+dbFileName = 'db.json'
 try:
-    with open(dbFileName,'rb') as fp:
-        db=pickle.load(fp)
+    with open(dbFileName, 'rb') as fp:
+        db = pickle.load(fp)
 except:
-    db={}
+    db = {}
 DefaultFiat = "EUR"
+print ("db at start")
+print(db)
 
 
 def getPrice(fsym, tsym):
@@ -82,22 +85,39 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
         resp = '1 {} = {} {}'.format(symbols.name(fsym), price, tsym)
         sendMessage(resp, chatId)
 
-    elif command.startswith('lower'):
+    elif command.startswith('lower') or command.startswith('higher'):        
         parts = command.split()
         if len(parts) < 3 or len(parts) > 4:
-            sendMessage("invalid command", chatId)
+            sendMessage("Invalid command", chatId)
             return
-        fsym = parts[1]
+        op=parts[0]
+        fsym = parts[1].upper()
         if not fsym in symbols.symbols:
-            sendMessage("invalid symbol", chatId)
+            sendMessage("Invalid symbol {}".format(fsym), chatId)
             return
         try:
-            target = int(parts[2])
+            target = float(parts[2])
         except ValueError:
-            sendMessage("invalid symbol", chatId)
+            sendMessage("Invalid number {}".format(parts[2]), chatId)
             return
-        tsym = parts[3] if len(parts) > 3 else DefaultFiat
-        alerts = db.get(chatId) or {}
+        tsym = parts[3].upper() if len(parts) > 3 else DefaultFiat
+        alerts = db[chatId] if chatId in db else {}
+        if fsym in alerts:
+            alert = alerts[fsym]
+            if op in alert and type(alert[op]) is dict:
+                opObj = alert[op]
+                if tsym in opObj:
+                    opObj[tsym].add(target)
+                else:
+                    opObj[tsym] = set([target])
+            else:
+                alert[op] = {tsym: set([target])}
+        else:
+            alerts[fsym] = {op: {tsym: set([target])}}
+        db[chatId] = alerts
+        msg = 'Done! you will get notification once {} goes {} {} {}.'.format(
+            fsym, 'under' if op == 'lower' else 'above' ,target, tsym)
+        sendMessage(msg, chatId)
 
 
 def processMessage(message):
@@ -105,9 +125,11 @@ def processMessage(message):
     chatId = message['chat']['id']
     if('entities' in message and message['entities'][0]['type'] == 'bot_command'):
         handleBotCommand(message)
+    else:
+        sendMessage('Invalid command',chatId)
 
 
-last_update = db['last_update'] if 'last_update' in db  else 0
+last_update = db['last_update'] if 'last_update' in db else 0
 #price = getPrice("ETH", "EUR")
 # print(price)
 # t=getTop()
@@ -138,7 +160,7 @@ def test_lower(command):
         alerts[fsym]['lower'] = '{} {}'.format(target, tsym)
     else:
         alerts[fsym] = {'lower': '{} {}'.format(target, tsym)}
-    db[chatId]= alerts
+    db[chatId] = alerts
 
 
 def test_higher(command):
@@ -174,21 +196,22 @@ def test_higher(command):
 # test_higher("higher BTC 6000 EUR")
 # test_higher("higher ETH 70000 SEC")
 # test_higher("higher LTC 800")
-print(db[123])
+# print(db[123])
+while True:
+    updates = getUpdates(last_update+1)
+    print(updates.text)
+    updates = updates.json()
 
-updates = getUpdates(last_update+1)
-print(updates.text)
-updates = updates.json()
+    if not updates['ok']:
+        print('request failed \n{}'.format(updates))
 
-if not updates['ok']:
-    print('request failed \n{}'.format(updates))
-    sys.exit()
+    for update in updates['result']:
+        print('processing {}...'.format(update['update_id']))
+        message = update['message'] if 'message' in update else update['edited_message']
+        processMessage(message)
+        last_update=update['update_id']
+        db['last_update'] = last_update
 
-for update in updates['result']:
-    print('processing {}...'.format(update['update_id']))
-    message = update['message'] if 'message' in update else update['edited_message']
-    processMessage(message)
-    db['last_update']= update['update_id']
-
-with open(dbFileName, 'wb') as fp:
-    pickle.dump(db, fp)
+    with open(dbFileName, 'wb') as fp:
+        pickle.dump(db, fp)
+    time.sleep(5)
