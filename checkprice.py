@@ -115,7 +115,9 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
             sendMessage("Invalid number {}".format(parts[2]), chatId)
             return
         tsym = parts[3].upper() if len(parts) > 3 else DefaultFiat
-        alerts = db[chatId] if chatId in db else {}
+        if 'alerts' not in db:
+            db['alerts']={} 
+        alerts = db['alerts'][chatId] if chatId in db['alerts'] else {}
         if fsym in alerts:
             alert = alerts[fsym]
             if op in alert and type(alert[op]) is dict:
@@ -128,7 +130,7 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
                 alert[op] = {tsym: set([target])}
         else:
             alerts[fsym] = {op: {tsym: set([target])}}
-        db[chatId] = alerts
+        db['alerts'][chatId] = alerts
         msg = 'Done! you will get notification once {} goes {} {} {}.'.format(
             symbols.symbols[fsym], 'under' if op == 'lower' else 'above' ,target, tsym)
         sendMessage(msg, chatId)
@@ -143,6 +145,41 @@ def processMessage(message):
         handleBotCommand(message)
     else:
         sendMessage('Invalid command',chatId)
+
+def removeAlert(fsym, tsym, target, chatId, op):
+    alerts=db['alerts']
+    alerts[chatId][fsym][op][tsym].remove(target)
+    if len(alerts[chatId][fsym][op][tsym])==0:
+        alerts[chatId][fsym][op].pop(tsym)
+        if len(alerts[chatId][fsym][op])==0:
+            alerts[chatId][fsym].pop(op)
+            if len(alerts[chatId][fsym])==0:
+                alerts[chatId].pop(fsym)
+                if len(alerts[chatId])==0:
+                    alerts.pop(chatId)
+
+def processAlerts():
+    if 'alerts' not in db:
+        return
+    higher='higher'
+    lower='lower'
+    alerts=db['alerts']
+    toRemove=[]
+    for chatId in alerts:
+        for fsym in alerts[chatId]:
+            ops=alerts[chatId][fsym]
+            for op in ops:
+                tsyms=ops[op]
+                for tsym in tsyms:
+                    targets=tsyms[tsym]
+                    price=getPrice(fsym, tsym)
+                    for target in targets:
+                        if op == lower and price<target or op == higher and price>target:
+                            sendMessage('{} is {} {} {} at {}'.format(symbols.name(fsym), 'below' if op == lower else 'above' ,target, tsym, price), chatId)
+                            toRemove.append((fsym,tsym, target, chatId,op))
+
+    for tr in toRemove:
+        removeAlert(tr[0],tr[1],tr[2],tr[3],tr[4])   
 
 #main loop
 while True:
@@ -159,6 +196,8 @@ while True:
         processMessage(message)
         last_update=update['update_id']
         db['last_update'] = last_update
+
+    processAlerts()
 
     with open(dbFileName, 'wb') as fp:
         pickle.dump(db, fp)
