@@ -1,11 +1,10 @@
-import requests
-import sys
-import time
+import sys, math, time, requests
 import pickle
 import symbols
 
 tgToken = '404889667:AAEZAEMoqItZw0M9IMjGO1OtTp17eMZdqp4'
 dbFileName = 'db.json'
+CacheDuration=10 #seconds
 try:
     with open(dbFileName, 'rb') as fp:
         db = pickle.load(fp)
@@ -16,24 +15,32 @@ print ("db at start")
 print(db)
 last_update = db['last_update'] if 'last_update' in db else 0
 
+def isPricePairValid(fsym, tsym):
+    return fsym in symbols.allFsyms and tsym in symbols.allTsyms
+
 def getPrice(fsym, tsym):
-    url = "https://min-api.cryptocompare.com/data/price?fsym={}&tsyms={}".format(
-        fsym, tsym)
-    r = requests.get(url)
-    print(url+'  '+r.text)
-    return r.json()[tsym]
+    if ('last_price_query' not in db) or (time.time() - db['last_price_query']>CacheDuration):
+        url = "https://min-api.cryptocompare.com/data/pricemulti?fsyms={}&tsyms={}".format(','.join(symbols.allFsyms),','.join(symbols.allTsyms))
+        r = requests.get(url)
+        db['prices']=r.json()
+        db['last_price_query']=time.time()
+
+    if isPricePairValid(fsym,tsym):
+        return db['prices'][fsym][tsym]
 
 
 def getTop():
-    url = "https://api.coinmarketcap.com/v1/ticker/?limit=32"
-    r = requests.get(url)
-    out = "`"
-    for coin in r.json():
-        out = out+coin['rank']+': ' + coin['symbol']+' '+coin['price_usd'] + \
-            '$\t'+coin['price_btc']+'BTC\t'+coin['market_cap_usd']+'$\n'
-    out = out+'`'
-    print(out)
-    return out
+    if ('last_top_query' not in db) or (time.time() - db['last_top_query']>CacheDuration):    
+        url = "https://api.coinmarketcap.com/v1/ticker/?limit=32"
+        r = requests.get(url)
+        out = "`"
+        for coin in r.json():
+            out = out+coin['rank']+': ' + coin['symbol']+' '+coin['price_usd'] + \
+                '$\t'+coin['price_btc']+'BTC\t'+str(math.floor(float(coin['market_cap_usd'])))+'$\n'
+        out = out+'`'
+        db['top']=out
+
+    return db['top']
 
 
 def getTgUrl(methodName):
@@ -75,12 +82,19 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
 
     elif command.startswith('price'):
         parts = command.split()
+        if len(parts)<2:
+            sendMessage("Invalid command", chatId)
+            return
         fsym = parts[1]
         tsym = DefaultFiat
         if len(parts) > 2:
-            tsym = parts[2]
+            tsym = parts[2]        
         tsym = tsym.upper()
         fsym = fsym.upper()
+        if not isPricePairValid(fsym,tsym):
+            sendMessage("Invalid command", chatId)
+            return
+            
         price = getPrice(fsym, tsym)
         resp = '1 {} = {} {}'.format(symbols.name(fsym), price, tsym)
         sendMessage(resp, chatId)
@@ -116,8 +130,10 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
             alerts[fsym] = {op: {tsym: set([target])}}
         db[chatId] = alerts
         msg = 'Done! you will get notification once {} goes {} {} {}.'.format(
-            fsym, 'under' if op == 'lower' else 'above' ,target, tsym)
+            symbols.symbols[fsym], 'under' if op == 'lower' else 'above' ,target, tsym)
         sendMessage(msg, chatId)
+    else:
+        sendMessage('Unknown command',chatId)
 
 
 def processMessage(message):
