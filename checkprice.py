@@ -4,6 +4,7 @@ import time
 import requests
 import pickle
 import symbols
+import traceback
 
 tgToken = '404889667:AAEZAEMoqItZw0M9IMjGO1OtTp17eMZdqp4'
 dbFileName = 'db.json'
@@ -60,7 +61,7 @@ def getTgUrl(methodName):
 def getUpdates(offset):
     url = getTgUrl('getUpdates')
     r = requests.post(
-        url=url, data={'offset': offset, 'limit': 100, 'timeout': []})
+        url=url, data={'offset': offset, 'limit': 100, 'timeout': 9})
     return r
 
 
@@ -196,23 +197,32 @@ def processAlerts():
 
 
 # main loop
-while True:
-    updates = getUpdates(last_update+1)
-    print(updates.text)
-    updates = updates.json()
+loop=True
+while loop:
+    
+    try:
+        updates = getUpdates(last_update+1)
+        print(updates.text)
+        updates = updates.json()
+    except KeyboardInterrupt:
+        print("W: interrupt received, stopping…")
+        loop=False
+    except:
+        traceback.print_exc()
+        updates['ok']=False        
 
     if not updates['ok']:
-        print('request failed \n{}'.format(updates))
-
-    for update in updates['result']:
-        print('processing {}...'.format(update['update_id']))
-        message = update['message'] if 'message' in update else update['edited_message']
-        processMessage(message)
-        last_update = update['update_id']
-        db['last_update'] = last_update
+        print('update request failed \n{}'.format(updates))
+    else:
+        for update in updates['result']:
+            print('processing {}...'.format(update['update_id']))
+            message = update['message'] if 'message' in update else update['edited_message']
+            processMessage(message)
+            last_update = update['update_id']
+            db['last_update'] = last_update
 
     processAlerts()
 
     with open(dbFileName, 'wb') as fp:
         pickle.dump(db, fp)
-    time.sleep(4)
+    time.sleep(1)
