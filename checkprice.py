@@ -90,11 +90,15 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
                     for tsym in alerts[fsym][op]:
                         for target in alerts[fsym][op][tsym]:
                             msg='{}{} {} {} {}\n'.format(msg, symbols.name(fsym), op, target,tsym)
-            sendMessage(msg, chatid)
+            sendMessage(msg, chatId)
         else:
-            sendMessage('No alert is set',chatid)
+            sendMessage('No alert is set',chatId)
 
-
+    elif command=='clear':
+        if 'alerts' in db and chatId in db['alerts']:
+            db['alerts'].pop(chatId)
+        sendMessage('Done.',chatId)
+    
     elif command.startswith('price'):
         parts = command.split()
         if len(parts) < 2:

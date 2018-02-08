@@ -2,6 +2,6 @@ symbols = {'BTC':'Bitcoin', 'ETH':'Ethereum', 'XRP':'Ripple', 'BCH':'Bitcoin Cas
 allFsyms= ['BTC','ETH','XRP','BCH','ADA','LTC','NEO','XLM','EOS','XEM','MIOTA','DASH','XMR','TRX','USDT','LSK','VEN','ETC','ICX','QTUM','BTG','XRB','PPT','ZEC','OMG','STEEM','BNB','BCN','SNT','XVG','SC','STRAT','BTS','WTC','MKR','AE','VERI','KCS','REP','ZRX','WAVES','DOGE','DCR','RHOC','HSR','DGD','KNC','ARDR','DRGN','KMD','GAS','ZIL','BAT','ARK','PLR','ETN','LRC','R','DCN','DGB','ELF','PIVX','ZCL','GBYTE']
 allTsyms= ['BTC','USD','EUR','SEK','IRR','JPY','CNY','GBP','CAD','AUD','RUB','INR','USDT','ETH','NOK','DKK']
 def name(sym):
-    if sym in symbols
+    if sym in symbols:
         return symbols[sym]
     return sym
