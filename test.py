@@ -71,4 +71,4 @@ def processAlerts():
 processAlerts()
 
 
-print(datetime.today())
+print(datetime.today().strftime('%Y-%m-%d %H:%M:%s'))
