@@ -40,6 +40,16 @@ def removeAlert(fsym, tsym, target, chatId, op):
 
 db={}
 db['alerts']={'123':{'BTC':{'lower':{'EUR':set([600])}}, 'ETH':{'lower':{'USD':set([200]), 'EUR':set([250]), 'SEK':set([10,100,150])}, 'higher':{'USD':set([100])}}}}
+chatId='123'
+if 'alerts' in db and chatId in db['alerts']:
+    alerts=db['alerts'][chatId]
+    msg=''
+    for fsym in alerts:
+        for op in alerts[fsym]:
+            for tsym in alerts[fsym][op]:
+                for target in alerts[fsym][op][tsym]:
+                    msg='{}{} {} {} {}\n'.format(msg, symbols.name(fsym), op, target,tsym)
+    print(msg)
 
 def getPrice(a,b):
     return 110
@@ -70,5 +80,3 @@ def processAlerts():
 
 processAlerts()
 
-
-print(datetime.today().strftime('%Y-%m-%d %H:%M:%s'))

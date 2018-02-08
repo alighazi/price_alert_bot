@@ -77,9 +77,23 @@ Hi, welcome to the Crypto price notification bot
 Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
         sendMessage(resp, chatId)
 
-    elif command == 'all':
+    elif command == 'all' or command == 'top':
         resp = getTop()
         sendMessage(resp, chatId, 'Markdown')
+
+    elif command == 'alerts':
+        if 'alerts' in db and chatId in db['alerts']:
+            alerts=db['alerts'][chatId]
+            msg='Current alerts:\n'
+            for fsym in alerts:
+                for op in alerts[fsym]:
+                    for tsym in alerts[fsym][op]:
+                        for target in alerts[fsym][op][tsym]:
+                            msg='{}{} {} {} {}\n'.format(msg, symbols.name(fsym), op, target,tsym)
+            sendMessage(msg, chatid)
+        else:
+            sendMessage('No alert is set',chatid)
+
 
     elif command.startswith('price'):
         parts = command.split()
