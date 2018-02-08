@@ -1,24 +1,14 @@
-import sys
-import math
-import time
-import requests
-import pickle
+import sys, math, time, requests, pickle, traceback
+from datetime import datetime
 import symbols
-import traceback
 
 tgToken = '404889667:AAEZAEMoqItZw0M9IMjGO1OtTp17eMZdqp4'
 dbFileName = 'db.json'
 CacheDuration = 10  # seconds
-try:
-    with open(dbFileName, 'rb') as fp:
-        db = pickle.load(fp)
-except:
-    db = {}
 DefaultFiat = "EUR"
-print("db at start")
-print(db)
-last_update = db['last_update'] if 'last_update' in db else 0
 
+def log(str):
+    print('{} - {}'.format(datetime.today(), str))
 
 def isPricePairValid(fsym, tsym):
     return fsym in symbols.allFsyms and tsym in symbols.allTsyms
@@ -49,7 +39,7 @@ def getTop():
         db['top'] = out
         db['last_top_query'] = time.time()
     else:
-        print('reading from the cache')
+        log('reading from the cache')
 
     return db['top']
 
@@ -79,7 +69,7 @@ def handleBotCommand(message):
     text = message['text']
     chatId = message['chat']['id']
     command = text.partition('/')[2]
-    print('handling command {}...'.format(command))
+    log('handling command "{}"...'.format(command))
 
     if command == 'start' or command == 'help':
         resp = """
@@ -118,12 +108,12 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
         op = parts[0]
         fsym = parts[1].upper()
         if not fsym in symbols.symbols:
-            sendMessage("Invalid symbol {}".format(fsym), chatId)
+            sendMessage('Invalid symbol "{}"'.format(fsym), chatId)
             return
         try:
             target = float(parts[2])
         except ValueError:
-            sendMessage("Invalid number {}".format(parts[2]), chatId)
+            sendMessage('Invalid number "{}"'.format(parts[2]), chatId)
             return
         tsym = parts[3].upper() if len(parts) > 3 else DefaultFiat
         if 'alerts' not in db:
@@ -142,7 +132,7 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
         else:
             alerts[fsym] = {op: {tsym: set([target])}}
         db['alerts'][chatId] = alerts
-        msg = 'Done! you will get notification once {} goes {} {} {}.'.format(
+        msg = 'Notification set for when {} goes {} {} {}.'.format(
             symbols.symbols[fsym], 'under' if op == 'lower' else 'above', target, tsym)
         sendMessage(msg, chatId)
     else:
@@ -196,33 +186,47 @@ def processAlerts():
         removeAlert(tr[0], tr[1], tr[2], tr[3], tr[4])
 
 
+try:
+    with open(dbFileName, 'rb') as fp:
+        db = pickle.load(fp)
+except:
+    db = {}
+log("db at start:\n {}".format(db))
+last_update = db['last_update'] if 'last_update' in db else 0
+
 # main loop
 loop=True
 while loop:
     
     try:
-        updates = getUpdates(last_update+1)
-        print(updates.text)
+        updates = getUpdates(last_update+1)        
         updates = updates.json()
     except KeyboardInterrupt:
-        print("W: interrupt received, stopping…")
+        log("W: interrupt received, stopping…")
         loop=False
     except:
-        traceback.print_exc()
+        traceback.log_exc()
         updates['ok']=False        
 
     if not updates['ok']:
-        print('update request failed \n{}'.format(updates))
+        log('update request failed \n{}'.format(updates))
     else:
         for update in updates['result']:
-            print('processing {}...'.format(update['update_id']))
+            log('processing {}...'.format(update['update_id']))
             message = update['message'] if 'message' in update else update['edited_message']
-            processMessage(message)
-            last_update = update['update_id']
-            db['last_update'] = last_update
+            try:
+                processMessage(message)
+                last_update = update['update_id']
+                db['last_update'] = last_update
+            except:
+                traceback.log_exc()
 
-    processAlerts()
+    try:
+        processAlerts()
+    except:
+        traceback.log_exc()
 
     with open(dbFileName, 'wb') as fp:
         pickle.dump(db, fp)
     time.sleep(1)
+

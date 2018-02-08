@@ -1,5 +1,6 @@
 import pickle, time, requests
 import symbols, math
+from datetime import datetime
 
 def getTop():
     url = "https://api.coinmarketcap.com/v1/ticker/?limit=64"
@@ -68,3 +69,6 @@ def processAlerts():
 
 
 processAlerts()
+
+
+print(datetime.today())
