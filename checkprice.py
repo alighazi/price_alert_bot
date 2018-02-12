@@ -223,7 +223,7 @@ while loop:
         log("W: interrupt received, stopping…")
         loop=False
     except:
-        traceback.log_exc()
+        traceback.print_exc()
         updates['ok']=False        
 
     if not updates['ok']:
@@ -237,12 +237,12 @@ while loop:
                 last_update = update['update_id']
                 db['last_update'] = last_update
             except:
-                traceback.log_exc()
+                traceback.print_exc()
 
     try:
         processAlerts()
     except:
-        traceback.log_exc()
+        traceback.print_exc()
 
     with open(dbFileName, 'wb') as fp:
         pickle.dump(db, fp)
