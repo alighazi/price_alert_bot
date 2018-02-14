@@ -150,7 +150,7 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
         else:
             alerts[fsym] = {op: {tsym: set([target])}}
         db['alerts'][chatId] = alerts
-        msg = 'Notification set for when {} goes {} {} {}.'.format(
+        msg = 'Notification set for {} {} {} {}.'.format(
             symbols.symbols[fsym], 'under' if op == 'lower' else 'above', target, tsym)
         sendMessage(msg, chatId)
     else:
@@ -223,10 +223,9 @@ while loop:
         log("W: interrupt received, stopping…")
         loop=False
     except:
-        traceback.print_exc()
-        updates['ok']=False        
+        traceback.print_exc()      
 
-    if not updates['ok']:
+    if not 'ok' in updates or not updates['ok']:
         log('update request failed \n{}'.format(updates))
     else:
         for update in updates['result']:
