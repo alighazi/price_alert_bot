@@ -2,32 +2,50 @@ import sys, math, time, requests, pickle, traceback
 from datetime import datetime
 import symbols
 
-tgToken = '404889667:AAEZAEMoqItZw0M9IMjGO1OtTp17eMZdqp4'
-dbFileName = 'db.json'
-CacheDuration = 10  # seconds
-DefaultFiat = "EUR"
+TG_TOKEN = '404889667:AAEZAEMoqItZw0M9IMjGO1OtTp17eMZdqp4'
+DB_FILENAME = 'db.json'
+CACHE_DURATION = 10  # seconds
+DEFAULT_FIAT = "USD"
+PARTITION_SIZE= 50
 
 def log(str):
     print('{} - {}'.format(datetime.today(), str))
 
 def isPricePairValid(fsym, tsym):
-    return fsym in symbols.allFsyms and tsym in symbols.allTsyms
+    return fsym in symbols.symbols.keys() and tsym in symbols.allTsyms
 
 
-def getPrice(fsym, tsym):
-    if ('last_price_query' not in db) or (time.time() - db['last_price_query'] > CacheDuration):
+def get_price(fsym, tsym):
+    index=list(symbols.symbols.keys()).index(fsym)
+    partition= index//PARTITION_SIZE
+
+    if 'last_price_queries' not in db:
+        db['last_price_queries']={}    
+    last_price_queries=db['last_price_queries']
+
+    if 'price_partitions' not in db:
+        db['price_partitions']={}
+    price_partitions=db['price_partitions']                
+
+    print('index: {}, partition: {}'.format(index,partition))
+
+    if (partition not in last_price_queries) or (time.time() - last_price_queries[partition]> CACHE_DURATION):
+        index_start=partition*PARTITION_SIZE
+        index_end=index_start+PARTITION_SIZE
+        fsyms=list(symbols.symbols.keys())[index_start : index_end]
         url = "https://min-api.cryptocompare.com/data/pricemulti?fsyms={}&tsyms={}".format(
-            ','.join(symbols.allFsyms), ','.join(symbols.allTsyms))
+            ','.join(fsyms), ','.join(symbols.allTsyms))
         r = requests.get(url)
-        db['prices'] = r.json()
-        db['last_price_query'] = time.time()
+        print(url)
+        price_partitions[partition]= r.json()
+        last_price_queries[partition] = time.time()
 
     if isPricePairValid(fsym, tsym):
-        return db['prices'][fsym][tsym]
+        return price_partitions[partition][fsym][tsym]
 
 
 def getTop():
-    if ('last_top_query' not in db) or (time.time() - db['last_top_query'] > CacheDuration):
+    if ('last_top_query' not in db) or (time.time() - db['last_top_query'] > CACHE_DURATION):
         url = "https://api.coinmarketcap.com/v1/ticker/?limit=32"
         r = requests.get(url)
         out = "`"
@@ -43,17 +61,14 @@ def getTop():
 
     return db['top']
 
-
 def getTgUrl(methodName):
-    return 'https://api.telegram.org/bot{}/{}'.format(tgToken, methodName)
-
+    return 'https://api.telegram.org/bot{}/{}'.format(TG_TOKEN, methodName)
 
 def getUpdates(offset):
     url = getTgUrl('getUpdates')
     r = requests.post(
         url=url, data={'offset': offset, 'limit': 100, 'timeout': 9})
     return r
-
 
 def sendMessage(msg, chatid, parse_mode=None):
     url = getTgUrl('sendMessage')
@@ -64,6 +79,12 @@ def sendMessage(msg, chatid, parse_mode=None):
     })
     return r
 
+def format_price(price, tsym):
+    if tsym=="BTC" or tsym=="ETH":
+        return '{:.8f}'.format(price)
+    
+    return '{:.2f}'.format(price)
+    
 
 def handleBotCommand(message):
     text = message['text']
@@ -100,31 +121,29 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
         sendMessage('Done.',chatId)
     
     elif command.startswith('price'):
-        parts = command.split()
+        parts = command.upper().split()
         if len(parts) < 2:
             sendMessage("Invalid command", chatId)
             return
         fsym = parts[1]
-        tsym = DefaultFiat
+        tsym = DEFAULT_FIAT
         if len(parts) > 2:
             tsym = parts[2]
-        tsym = tsym.upper()
-        fsym = fsym.upper()
         if not isPricePairValid(fsym, tsym):
-            sendMessage("Invalid command", chatId)
+            sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
             return
 
-        price = getPrice(fsym, tsym)
-        resp = '1 {} = {} {}'.format(symbols.name(fsym), price, tsym)
+        price = get_price(fsym, tsym)
+        resp = '1 {} = {} {}'.format(symbols.name(fsym), format_price(price, tsym),tsym)
         sendMessage(resp, chatId)
 
     elif command.startswith('lower') or command.startswith('higher'):
-        parts = command.split()
+        parts = command.upper().split()
         if len(parts) < 3 or len(parts) > 4:
             sendMessage("Invalid command", chatId)
             return
         op = parts[0]
-        fsym = parts[1].upper()
+        fsym = parts[1]
         if not fsym in symbols.symbols:
             sendMessage('Invalid symbol "{}"'.format(fsym), chatId)
             return
@@ -133,7 +152,10 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
         except ValueError:
             sendMessage('Invalid number "{}"'.format(parts[2]), chatId)
             return
-        tsym = parts[3].upper() if len(parts) > 3 else DefaultFiat
+        tsym = parts[3] if len(parts) > 3 else DEFAULT_FIAT
+        if tsym not in symbols.allTsyms:
+            sendMessage('Invalid symbol {}'.format(tsym))
+
         if 'alerts' not in db:
             db['alerts'] = {}
         alerts = db['alerts'][chatId] if chatId in db['alerts'] else {}
@@ -151,11 +173,10 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
             alerts[fsym] = {op: {tsym: set([target])}}
         db['alerts'][chatId] = alerts
         msg = 'Notification set for {} {} {} {}.'.format(
-            symbols.symbols[fsym], 'under' if op == 'lower' else 'above', target, tsym)
+            symbols.symbols[fsym], 'below' if op == 'LOWER' else 'above', format_price(target, tsym), tsym)
         sendMessage(msg, chatId)
     else:
         sendMessage('Unknown command', chatId)
-
 
 def processMessage(message):
     text = message['text']
@@ -164,7 +185,6 @@ def processMessage(message):
         handleBotCommand(message)
     else:
         sendMessage('Invalid command', chatId)
-
 
 def removeAlert(fsym, tsym, target, chatId, op):
     alerts = db['alerts']
@@ -178,12 +198,11 @@ def removeAlert(fsym, tsym, target, chatId, op):
                 if len(alerts[chatId]) == 0:
                     alerts.pop(chatId)
 
-
 def processAlerts():
     if 'alerts' not in db:
         return
-    higher = 'higher'
-    lower = 'lower'
+    higher = 'HIGHER'
+    lower = 'LOWER'
     alerts = db['alerts']
     toRemove = []
     for chatId in alerts:
@@ -193,19 +212,18 @@ def processAlerts():
                 tsyms = ops[op]
                 for tsym in tsyms:
                     targets = tsyms[tsym]
-                    price = getPrice(fsym, tsym)
+                    price = get_price(fsym, tsym)
                     for target in targets:
                         if op == lower and price < target or op == higher and price > target:
-                            sendMessage('{} is {} {} {} at {}'.format(symbols.name(
-                                fsym), 'below' if op == lower else 'above', target, tsym, price), chatId)
+                            sendMessage('{} is {} {} at {} {}'.format(symbols.name(fsym),
+                             'below' if op == lower else 'above', format_price(target, tsym), format_price(price, tsym), tsym), chatId)
                             toRemove.append((fsym, tsym, target, chatId, op))
 
     for tr in toRemove:
         removeAlert(tr[0], tr[1], tr[2], tr[3], tr[4])
 
-
 try:
-    with open(dbFileName, 'rb') as fp:
+    with open(DB_FILENAME, 'rb') as fp:
         db = pickle.load(fp)
 except:
     db = {}
@@ -243,7 +261,7 @@ while loop:
     except:
         traceback.print_exc()
 
-    with open(dbFileName, 'wb') as fp:
+    with open(DB_FILENAME, 'wb') as fp:
         pickle.dump(db, fp)
     time.sleep(1)
 

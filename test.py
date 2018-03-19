@@ -1,30 +1,19 @@
 import pickle, time, requests
 import symbols, math
+import json
 from datetime import datetime
 
 def getTop():
-    url = "https://api.coinmarketcap.com/v1/ticker/?limit=64"
+    url = "https://api.coinmarketcap.com/v1/ticker/?limit=1000"
     r = requests.get(url)
     out=''
     for coin in r.json():
-        out = out +"'"+ coin['symbol']+"',"
+        out += "('{}','{}'),".format(coin['symbol'], coin['name'])
     print(out)
     return out
-l=['BTC','ETH','XRP','BCH','ADA','LTC','NEO','XLM','EOS','XEM','MIOTA','DASH','XMR','TRX','USDT','LSK','VEN','ETC','ICX','QTUM','BTG','XRB','PPT','ZEC','OMG','STEEM','BNB','BCN','SNT','XVG','SC','STRAT','BTS','WTC','MKR','AE','VERI','KCS','REP','ZRX','WAVES','DOGE','DCR','RHOC','HSR','DGD','KNC','ARDR','DRGN','KMD','GAS','ZIL','BAT','ARK','PLR','ETN','LRC','R','DCN','DGB','ELF','PIVX','ZCL','GBYTE']
 
-# filename='db.json'
 
-# try:
-#     with open(filename,'rb') as fp:
-#         db=pickle.load(fp)
-# except:
-#     db={}
-
-# print(db)
-# db[123]={"new":db}
-
-# with open(filename, 'wb') as fp:
-#     pickle.dump(db, fp)
+print(list(symbols.symbols.keys()).index('STORM'))
 
 def removeAlert(fsym, tsym, target, chatId, op):
     alerts=db['alerts']
@@ -37,19 +26,6 @@ def removeAlert(fsym, tsym, target, chatId, op):
                 alerts[chatId].pop(fsym)
                 if len(alerts[chatId])==0:
                     alerts.pop(chatId)
-
-db={}
-db['alerts']={'123':{'BTC':{'lower':{'EUR':set([600])}}, 'ETH':{'lower':{'USD':set([200]), 'EUR':set([250]), 'SEK':set([10,100,150])}, 'higher':{'USD':set([100])}}}}
-chatId='123'
-if 'alerts' in db and chatId in db['alerts']:
-    alerts=db['alerts'][chatId]
-    msg=''
-    for fsym in alerts:
-        for op in alerts[fsym]:
-            for tsym in alerts[fsym][op]:
-                for target in alerts[fsym][op][tsym]:
-                    msg='{}{} {} {} {}\n'.format(msg, symbols.name(fsym), op, target,tsym)
-    print(msg)
 
 def getPrice(a,b):
     return 110
@@ -77,6 +53,4 @@ def processAlerts():
     for tr in toRemove:
         removeAlert(tr[0],tr[1],tr[2],tr[3],tr[4])    
 
-
-processAlerts()
 
