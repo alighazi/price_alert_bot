@@ -3,17 +3,25 @@ import symbols, math
 import json
 from datetime import datetime
 
-def getTop():
-    url = "https://api.coinmarketcap.com/v1/ticker/?limit=1000"
+def getTop(update=False):
+    url = "https://min-api.cryptocompare.com/data/top/totalvol?limit=1000&tsym=USD"
     r = requests.get(url)
     out=''
-    for coin in r.json():
-        out += "('{}','{}'),".format(coin['symbol'], coin['name'])
+    data =r.json()["Data"]
+
+    for coin in data:
+        info=coin["CoinInfo"]
+        out += "('{}','{}'),".format(info["Name"], info["FullName"])
     print(out)
+
+    # symbols=[]
+    # for coin in r.json():
+    #     symbols.append((coin['symbol'], coin['name']))
+    # print(symbols);   
     return out
 
 
-print(list(symbols.symbols.keys()).index('STORM'))
+print(getTop(True))
 
 def removeAlert(fsym, tsym, target, chatId, op):
     alerts=db['alerts']

@@ -1,22 +1,40 @@
 import sys, math, time, requests, pickle, traceback
 from datetime import datetime
+import collections
 import symbols
 
 TG_TOKEN = '404889667:AAEZAEMoqItZw0M9IMjGO1OtTp17eMZdqp4'
 DB_FILENAME = 'db.json'
 CACHE_DURATION = 10  # seconds
 DEFAULT_FIAT = "USD"
-PARTITION_SIZE= 50
+PARTITION_SIZE= 45
+TSYMS = ['BTC','USD','EUR','SEK','IRR','JPY','CNY','GBP','CAD','AUD','RUB','INR','USDT','ETH']
 
 def log(str):
     print('{} - {}'.format(datetime.today(), str))
 
 def isPricePairValid(fsym, tsym):
-    return fsym in symbols.symbols.keys() and tsym in symbols.allTsyms
+    return fsym in get_symbols().keys() and tsym in TSYMS
 
+def get_symbols(update=False):
+    last_symbol_update= db['last_symbol_update'] if 'last_symbol_update' in db else 0
+    if time.time()-last_symbol_update < CACHE_DURATION:
+        return db['symbols']
+    if update or 'symbol' not in db:
+        print('loading symbols from network')
+        url = "https://min-api.cryptocompare.com/data/top/totalvol?limit=1000&tsym=USD"
+        r = requests.get(url)
+        syms = collections.OrderedDict()
+        data = r.json()["Data"]
+        for coin in data:
+            syms[coin["CoinInfo"]["Internal"]]= coin["CoinInfo"]["FullName"]
+        db['last_symbol_update'] = time.time()
+        db['symbols']=syms
+        return syms
 
 def get_price(fsym, tsym):
-    index=list(symbols.symbols.keys()).index(fsym)
+    symbols=get_symbols(True)
+    index=list(symbols.keys()).index(fsym)
     partition= index//PARTITION_SIZE
 
     if 'last_price_queries' not in db:
@@ -27,16 +45,14 @@ def get_price(fsym, tsym):
         db['price_partitions']={}
     price_partitions=db['price_partitions']                
 
-    print('index: {}, partition: {}'.format(index,partition))
+    print('index: {}, partition: {}, fsym: {}, tsym: {}'.format(index,partition, fsym,tsym))
 
     if (partition not in last_price_queries) or (time.time() - last_price_queries[partition]> CACHE_DURATION):
-        index_start=partition*PARTITION_SIZE
-        index_end=index_start+PARTITION_SIZE
-        fsyms=list(symbols.symbols.keys())[index_start : index_end]
-        url = "https://min-api.cryptocompare.com/data/pricemulti?fsyms={}&tsyms={}".format(
-            ','.join(fsyms), ','.join(symbols.allTsyms))
+        index_start = max(0, partition * PARTITION_SIZE - 2)
+        index_end = index_start + PARTITION_SIZE
+        fsyms = list(symbols.keys())[index_start : index_end]
+        url = "https://min-api.cryptocompare.com/data/pricemulti?fsyms={}&tsyms={}".format(','.join(fsyms), ','.join(TSYMS))
         r = requests.get(url)
-        print(url)
         price_partitions[partition]= r.json()
         last_price_queries[partition] = time.time()
 
@@ -110,7 +126,7 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
                 for op in alerts[fsym]:
                     for tsym in alerts[fsym][op]:
                         for target in alerts[fsym][op][tsym]:
-                            msg='{}{} {} {} {}\n'.format(msg, symbols.name(fsym), op, target,tsym)
+                            msg='{}{} {} {} {}\n'.format(msg, get_symbols()[fsym], op, target,tsym)
             sendMessage(msg, chatId)
         else:
             sendMessage('No alert is set',chatId)
@@ -134,7 +150,7 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
             return
 
         price = get_price(fsym, tsym)
-        resp = '1 {} = {} {}'.format(symbols.name(fsym), format_price(price, tsym),tsym)
+        resp = '1 {} = {} {}'.format(get_symbols()[fsym], format_price(price, tsym),tsym)
         sendMessage(resp, chatId)
 
     elif command.startswith('lower') or command.startswith('higher'):
@@ -144,7 +160,7 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
             return
         op = parts[0]
         fsym = parts[1]
-        if not fsym in symbols.symbols:
+        if not fsym in get_symbols().keys():
             sendMessage('Invalid symbol "{}"'.format(fsym), chatId)
             return
         try:
@@ -153,8 +169,13 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
             sendMessage('Invalid number "{}"'.format(parts[2]), chatId)
             return
         tsym = parts[3] if len(parts) > 3 else DEFAULT_FIAT
-        if tsym not in symbols.allTsyms:
-            sendMessage('Invalid symbol {}'.format(tsym))
+        if tsym == "SAT" or tsym== "SATS":
+            target=target/(100.0*1000.0*1000.0)
+            tsym="BTC"
+
+        if tsym not in TSYMS:
+            sendMessage('Invalid symbol {}'.format(tsym), chatId)
+            return
 
         if 'alerts' not in db:
             db['alerts'] = {}
@@ -173,7 +194,7 @@ Set alerts on your favorite crypto currencies. Get notified and earn $$$"""
             alerts[fsym] = {op: {tsym: set([target])}}
         db['alerts'][chatId] = alerts
         msg = 'Notification set for {} {} {} {}.'.format(
-            symbols.symbols[fsym], 'below' if op == 'LOWER' else 'above', format_price(target, tsym), tsym)
+            get_symbols()[fsym], 'below' if op == 'LOWER' else 'above', format_price(target, tsym), tsym)
         sendMessage(msg, chatId)
     else:
         sendMessage('Unknown command', chatId)
@@ -215,7 +236,7 @@ def processAlerts():
                     price = get_price(fsym, tsym)
                     for target in targets:
                         if op == lower and price < target or op == higher and price > target:
-                            sendMessage('{} is {} {} at {} {}'.format(symbols.name(fsym),
+                            sendMessage('{} is {} {} at {} {}'.format(get_symbols()[fsym],
                              'below' if op == lower else 'above', format_price(target, tsym), format_price(price, tsym), tsym), chatId)
                             toRemove.append((fsym, tsym, target, chatId, op))
 
