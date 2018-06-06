@@ -66,9 +66,15 @@ def getTop():
         r = requests.get(url)
         out = "`"
         for coin in r.json():
+            cap_f=math.floor(float(coin['market_cap_usd']))
+            cap_s=''
+            if cap_f>1000*1000*1000:
+                cap_s='${:.3f}B\n'.format(cap_f/(1000*1000*1000))
+            else:
+                cap_s='${:.3f}M\n'.format(cap_f/(1000*1000))
+                
             out = out+coin['rank']+': ' + coin['symbol']+' '+coin['price_usd'] + \
-                '$\t'+coin['price_btc']+'BTC\t' + \
-                str(math.floor(float(coin['market_cap_usd'])))+'$\n'
+                '$\t'+coin['price_btc']+'BTC\t' + cap_s
         out = out+'`'
         db['top'] = out
         db['last_top_query'] = time.time()
@@ -251,38 +257,39 @@ except:
 log("db at start:\n {}".format(db))
 last_update = db['last_update'] if 'last_update' in db else 0
 
+print(getTop())
 # main loop
-loop=True
-while loop:
+# loop=True
+# while loop:
     
-    try:
-        updates = getUpdates(last_update+1)        
-        updates = updates.json()
-    except KeyboardInterrupt:
-        log("W: interrupt received, stopping…")
-        loop=False
-    except:
-        traceback.print_exc()      
+#     try:
+#         updates = getUpdates(last_update+1)        
+#         updates = updates.json()
+#     except KeyboardInterrupt:
+#         log("W: interrupt received, stopping…")
+#         loop=False
+#     except:
+#         traceback.print_exc()      
 
-    if not 'ok' in updates or not updates['ok']:
-        log('update request failed \n{}'.format(updates))
-    else:
-        for update in updates['result']:
-            log('processing {}...'.format(update['update_id']))
-            message = update['message'] if 'message' in update else update['edited_message']
-            try:
-                processMessage(message)
-                last_update = update['update_id']
-                db['last_update'] = last_update
-            except:
-                traceback.print_exc()
+#     if not 'ok' in updates or not updates['ok']:
+#         log('update request failed \n{}'.format(updates))
+#     else:
+#         for update in updates['result']:
+#             log('processing {}...'.format(update['update_id']))
+#             message = update['message'] if 'message' in update else update['edited_message']
+#             try:
+#                 processMessage(message)
+#                 last_update = update['update_id']
+#                 db['last_update'] = last_update
+#             except:
+#                 traceback.print_exc()
 
-    try:
-        processAlerts()
-    except:
-        traceback.print_exc()
+#     try:
+#         processAlerts()
+#     except:
+#         traceback.print_exc()
 
-    with open(DB_FILENAME, 'wb') as fp:
-        pickle.dump(db, fp)
-    time.sleep(1)
+#     with open(DB_FILENAME, 'wb') as fp:
+#         pickle.dump(db, fp)
+#     time.sleep(1)
 
