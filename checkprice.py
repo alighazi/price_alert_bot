@@ -257,7 +257,7 @@ except:
 log("db at start:\n {}".format(db))
 last_update = db['last_update'] if 'last_update' in db else 0
 
-main loop
+#main loop
 loop=True
 while loop:
     
