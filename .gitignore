@@ -106,3 +106,4 @@ venv.bak/
 
 db.json
 nohup.out
+config.py

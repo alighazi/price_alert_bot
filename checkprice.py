@@ -1,9 +1,8 @@
 import sys, math, time, requests, pickle, traceback
 from datetime import datetime
 import collections
-import symbols
+import config
 
-TG_TOKEN = '404889667:AAEZAEMoqItZw0M9IMjGO1OtTp17eMZdqp4'
 DB_FILENAME = 'db.json'
 CACHE_DURATION = 10  # seconds
 DEFAULT_FIAT = "USD"
@@ -84,7 +83,7 @@ def getTop():
     return db['top']
 
 def getTgUrl(methodName):
-    return 'https://api.telegram.org/bot{}/{}'.format(TG_TOKEN, methodName)
+    return 'https://api.telegram.org/bot{}/{}'.format(config.TG_TOKEN, methodName)
 
 def getUpdates(offset):
     url = getTgUrl('getUpdates')
