@@ -3,13 +3,14 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw 
 
-IMG_WIDTH = 400 
-IMG_HEIGHT = 300
-CHART_MARGIN_LEFT = 30
-CHART_MARGIN_BOTTOM = 30
+IMG_WIDTH = 640 
+IMG_HEIGHT = 480
+CHART_MARGIN_LEFT = 40
+CHART_MARGIN_BOTTOM = 40
+CHART_MARGIN_TOP = 30
 CHART_PADDING = 5
 CANDLE_PADDING = 2
-FONT_PATH = "font/ShareTechMono-Regular.ttf"
+FONT_PATH = "font/UbuntuMono-Regular.ttf"
 
 img = Image.new('RGB', (IMG_WIDTH,IMG_HEIGHT))
 draw = ImageDraw.Draw(img)
@@ -42,7 +43,7 @@ def validate_candles(candles):
             return False
 
 def normalize_candle(candle, minVal, maxVal):
-    ratio = (IMG_HEIGHT -  CHART_MARGIN_BOTTOM - CHART_PADDING * 2.0) / (maxVal - minVal)
+    ratio = (IMG_HEIGHT -  CHART_MARGIN_BOTTOM - CHART_MARGIN_TOP - CHART_PADDING * 2.0) / (maxVal - minVal)
     # (320 - 30 -10) / 55-24 = 9
     bottom = IMG_HEIGHT - CHART_MARGIN_BOTTOM - CHART_PADDING
     return ((bottom -  (candle[0] - minVal)* ratio),
@@ -56,19 +57,16 @@ def draw_chart_frame(draw, minVal, maxVal):
     right = IMG_WIDTH
     bottom = IMG_HEIGHT - CHART_MARGIN_BOTTOM
     top = 0    
-    draw.line([(left, bottom), (right, bottom)], color, 1)
-    draw.line([(left, top), (left, bottom)], color, 1)
-
     MARGIN=2
-    font = ImageFont.truetype(FONT_PATH, 12)
-    valStr = "{:.1f}".format(minVal)
-    size = draw.textsize(str(valStr), font)
-    draw.text((left-size[0]-MARGIN, bottom - size[1]-MARGIN), str(valStr), color, font)
+    font = ImageFont.truetype(FONT_PATH, 10)
+    # valStr = "{:.1f}".format(minVal)
+    # size = draw.textsize(str(valStr), font)
+    # draw.text((left-size[0]-MARGIN, bottom - size[1]- CHART_PADDING - MARGIN), str(valStr), color, font)
 
     color_bg=(100,100,100)
     LINES=12
-    for i in range(1, LINES):        
-        y = bottom - (i/LINES) * (bottom - top)
+    for i in range(0, LINES+1):        
+        y = bottom - (i/LINES) * (bottom - top -CHART_MARGIN_TOP - CHART_PADDING*2) - CHART_PADDING
         draw.line([(left, y), (right, y)], color_bg, 1)
         x = left + (i/LINES) * (right - left)
         draw.line([(x, top), (x, bottom)], color_bg, 1)
@@ -76,6 +74,9 @@ def draw_chart_frame(draw, minVal, maxVal):
         valStr = "{:.1f}".format(val)
         size = draw.textsize(valStr, font)
         draw.text((left-size[0]-MARGIN, y - size[1]-MARGIN), valStr, color, font)
+
+    draw.line([(left, bottom), (right, bottom)], color, 1)
+    draw.line([(left, top), (left, bottom)], color, 1)
 
 
 def draw_candles(draw, candles):
