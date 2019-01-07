@@ -5,9 +5,9 @@ from PIL import ImageDraw
 from candle import Candle
 
 class DrawChart:
-    IMG_WIDTH = 720 
-    IMG_HEIGHT = 480
-    CHART_MARGIN_LEFT = 40
+    IMG_WIDTH = 1280 
+    IMG_HEIGHT = 720
+    CHART_MARGIN_LEFT = 80
     CHART_MARGIN_BOTTOM = 40
     CHART_MARGIN_TOP = 30
     CHART_PADDING = 5
@@ -44,10 +44,13 @@ class DrawChart:
         bottom = self.IMG_HEIGHT - self.CHART_MARGIN_BOTTOM
         top = 0    
         MARGIN=2
-        font = ImageFont.truetype(self.FONT_PATH, 12)
+        font = ImageFont.truetype(self.FONT_PATH, 14)
         # valStr = "{:.1f}".format(minVal)
         # size = draw.textsize(str(valStr), font)
         # draw.text((left-size[0]-MARGIN, bottom - size[1]- self.CHART_PADDING - MARGIN), str(valStr), color, font)
+
+        length = int(math.floor(math.log10(math.floor(maxVal))+1)) if maxVal>=1 else 0
+        precision = 8 - length
 
         color_bg=(100,100,100)
         LINES=12
@@ -57,7 +60,7 @@ class DrawChart:
             x = left + (i/LINES) * (right - left)
             draw.line([(x, top), (x, bottom)], color_bg, 1)
             val =minVal + (i/LINES) * (maxVal - minVal)
-            valStr = "{:6.1f}".format(val)
+            valStr = f"{val:{length}.{precision}f}"
             size = draw.textsize(valStr, font)
             draw.text((left-size[0]-MARGIN, y - size[1]-MARGIN), valStr, color, font)
 

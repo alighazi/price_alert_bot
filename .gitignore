@@ -107,3 +107,4 @@ venv.bak/
 db.json
 nohup.out
 config.py
+output_images/*.*
