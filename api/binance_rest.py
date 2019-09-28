@@ -1,12 +1,14 @@
 import urllib 
 import requests
+import collections
 from enum import Enum, unique
 from candle import Candle
 
 
 class RestApiBinance:
     BASE_URL="https://api.binance.com/"
-    PATH_CANDLESTICK_DATA= "api/v1/klines"
+    PATH_CANDLESTICK_DATA = "api/v1/klines"
+    PATH_EXCHANGEINFO = "api/v1/exchangeInfo"
 
     def get_candles(self, symbol, interval, limit= 500):
         query_params = {}
@@ -25,7 +27,14 @@ class RestApiBinance:
         for c in json:
             candles[c[0]] = Candle(float(c[1]), float(c[2]), float(c[3]), float(c[4]), c[0],c[6], float(c[5]))
         return candles
+    
+    def get_exchangeinfo(self):
+        url = self.BASE_URL + self.PATH_EXCHANGEINFO
+        print("requesting: "+ url)
+        r = requests.request("GET", url)
+        return r
 
+            
 @unique
 class CandleInterval(Enum):
     ONE_MINUTE = "1m"

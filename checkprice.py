@@ -19,7 +19,7 @@ def get_symbols(update=False):
     last_symbol_update= db['last_symbol_update'] if 'last_symbol_update' in db else 0
     if time.time()-last_symbol_update < CACHE_DURATION:
         return db['symbols']
-    if update or 'symbol' not in db:
+    if update or 'symbol' not in db:#hahahaha its not updating at all 
         print('loading symbols from network')
         url = "https://min-api.cryptocompare.com/data/top/totalvol?limit=1000&tsym=USD"
         r = requests.get(url)
