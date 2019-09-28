@@ -3,4 +3,4 @@ if [ -f "$logfile" ]
 then mv "$logfile" "$logfile.$(date +%F-%T)"
 fi
 
-nohup python3 checkprice.py &
+nohup python3 tg_bot_service.py &
