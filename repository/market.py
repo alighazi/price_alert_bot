@@ -2,7 +2,8 @@ from time import time
 from datetime import datetime
 import math
 import collections
-from os import remove
+from os import remove,listdir
+
 
 from cache import cache
 from api.binance_rest import RestApiBinance,CandleInterval
@@ -74,13 +75,17 @@ class MarketRepository(object):
             tsym = "USDT"
         pair = fsym + tsym
 
-        filename= f"{ROOT}/{pair}-{TF.value}-{CANDLES}-{time()}.png"
+        filenameBase= f"{pair}-{TF.value}-{CANDLES}"
+        toRemove = [f for f in listdir(ROOT) if f.startswith(filenameBase)]
+        for f in toRemove:
+            remove(f"{ROOT}/{f}")
+        filename= f"{ROOT}/{filenameBase}-{time()}.png"
         pairs = self.binance_api.get_pairs()
-        #TODO: remove the previous chart first!
         if (fsym, tsym) in pairs:
             c = self.binance_api.get_candles(pair, TF, CANDLES)
             dr = DrawChart()
             dr.save(filename, c)
+        return filename
 
 
 

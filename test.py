@@ -19,8 +19,8 @@ total_candles = 120
 #dr.save(f"{output_dir}/{pair}-{candle_interval.value}-{total_candles}-{datetime.today():%Y-%m-%d-%H%M%S}.png", c)
 
 
-tb=tg_bot.TgBot()
-tb.init()
+# tb=tg_bot.TgBot()
+# tb.init()
 
 
 #print(b.get_pairs())
@@ -34,3 +34,5 @@ sex("100m", "5F")
 
 mr = MarketRepository()
 mr.get_chart("btc", "usd")
+
+cache.persist()

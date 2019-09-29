@@ -14,8 +14,7 @@ class cache:
                 try:
                     with open(cache.FILENAME, 'rb') as fp:
                         cache.cache = pickle.load(fp)
-                        print("opening db")
-                        print(cache.cache)
+                        print(f"opened cache db: {len(cache.cache)} entries")
                         cache.LOADED = True
                 except:
                     print("failed to load cache file,")
@@ -30,13 +29,18 @@ class cache:
             key = self.__key
             for arg_pos in self.__per_args:
                 key +="|"+args[arg_pos]
-            print("key: "+key)
             if key in cache.cache:
                 entry = cache.cache[key]
+                print(f"cache found for key: {key}")
                 if entry[0] + self.__secs >= time():
+                    print("valid! returning!")
                     return entry[1]
+                else:
+                    print("expired!")
             
             returnValue = fn(*args, **kwargs)
+            if returnValue== None:
+                print(f"warning, None return! key: {key}")
             cache.cache[key] = [time(), returnValue]
             return returnValue        
  
@@ -45,8 +49,7 @@ class cache:
     @staticmethod
     def persist():
         with open(cache.FILENAME, 'wb') as fp:
-            print("saving db")
-            print(cache.cache)
+            print(f"persisting cache: {len(cache.cache)} entries")
             pickle.dump(cache.cache, fp)
 
     @staticmethod
