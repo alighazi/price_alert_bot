@@ -3,6 +3,8 @@ from datetime import datetime
 from api.binance_rest import RestApiBinance, CandleInterval
 from candle import Candle
 from draw_candles import DrawChart
+from cache import cache
+from repository.market import MarketRepository
 import tg_bot
 
 b = RestApiBinance()
@@ -19,9 +21,16 @@ total_candles = 120
 
 tb=tg_bot.TgBot()
 tb.init()
-syms = tb.getTop()
-print(syms)
 
-price= tb.get_price("BTC", "USD")
-print(price)
-print(tb.get_price("NANO","USD"))
+
+#print(b.get_pairs())
+
+@cache("sex",5,[0,1])
+def sex(lengthOfDick, sizeOfCup):
+    print("my name is ali and I am sexy")
+    print(f"{lengthOfDick}/{sizeOfCup}")
+
+sex("100m", "5F")
+
+mr = MarketRepository()
+mr.get_chart("btc", "usd")

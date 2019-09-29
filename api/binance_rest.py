@@ -2,6 +2,7 @@ import urllib
 import requests
 import collections
 from enum import Enum, unique
+from cache import cache
 from candle import Candle
 
 
@@ -28,12 +29,20 @@ class RestApiBinance:
             candles[c[0]] = Candle(float(c[1]), float(c[2]), float(c[3]), float(c[4]), c[0],c[6], float(c[5]))
         return candles
     
+    @cache("binance.exchangeinfo", 100000)
     def get_exchangeinfo(self):
         url = self.BASE_URL + self.PATH_EXCHANGEINFO
         print("requesting: "+ url)
         r = requests.request("GET", url)
-        return r
+        return r.json()
 
+    @cache("binance.pairs", 100000)
+    def get_pairs(self):
+        pairs=[]
+        info = self.get_exchangeinfo()
+        for s in info["symbols"]:
+            pairs.append((s["baseAsset"],s["quoteAsset"]))
+        return pairs
             
 @unique
 class CandleInterval(Enum):

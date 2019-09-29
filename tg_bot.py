@@ -1,18 +1,18 @@
 import sys, math, time, requests, pickle
 from datetime import datetime
 import collections
-from repsitory.market import MarketRepsitory
+from repository.market import MarketRepository
 import config
 
 class TgBot(object):
-    DB_FILENAME = 'db.json'
+    DB_FILENAME = 'db.pickle'
     CACHE_DURATION = 10  # seconds
     DEFAULT_FIAT = "USD"
 
     db = {} #this makes db static!
 
     def __init__(self):
-        self.repsitory = MarketRepsitory()
+        self.Repository = MarketRepository()
 
     def log(self, str):
         print('{} - {}'.format(datetime.today(), str))
@@ -20,23 +20,21 @@ class TgBot(object):
     def getTgUrl(self, methodName):
         return 'https://api.telegram.org/bot{}/{}'.format(config.TG_TOKEN, methodName)
 
-    def format_price(self, price, tsym):
-        if tsym=="BTC" or tsym=="ETH":
-            return '{:.8f}'.format(price)
-        
-        return '{:.2f}'.format(price)
+    def format_price(self, price):
+        precision = max(1,min(-math.floor(math.log10(price))+2,8))       
+        return f'{price:.{precision}f}'
 
     def get_price(self, fsym, tsym):
-        if not self.repsitory.isPricePairValid(fsym, tsym):
+        if not self.Repository.isPricePairValid(fsym, tsym):
             print(f"price pair not valid {fsym} {tsym}")
         else:
-            return self.repsitory.get_price(fsym, tsym)
+            return self.Repository.get_price(fsym, tsym)
 
     def getTop(self):
-        return self.repsitory.get_top_coins()
+        return self.Repository.get_top_coins()
 
     def get_symbols(self):
-        return self.repsitory.get_symbols()
+        return self.Repository.get_symbols()
 
     def sendMessage(self, msg, chatid, parse_mode=None):
         url = self.getTgUrl('sendMessage')
@@ -88,12 +86,12 @@ class TgBot(object):
             tsym = self.DEFAULT_FIAT
             if len(parts) > 2:
                 tsym = parts[2]
-            if not self.isPricePairValid(fsym, tsym):
+            if not self.Repository.isPricePairValid(fsym, tsym):
                 self.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
                 return
 
             price = self.get_price(fsym, tsym)
-            resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], self.format_price(price, tsym),tsym)
+            resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], self.format_price(price),tsym)
             self.sendMessage(resp, chatId)
 
         elif command.startswith('lower') or command.startswith('higher'):
@@ -116,7 +114,7 @@ class TgBot(object):
                 target=target/(100.0*1000.0*1000.0)
                 tsym="BTC"
 
-            if tsym not in self.repsitory.TSYMS:
+            if tsym not in self.Repository.TSYMS:
                 self.sendMessage('Invalid symbol {}'.format(tsym), chatId)
                 return
 
@@ -137,7 +135,7 @@ class TgBot(object):
                 alerts[fsym] = {op: {tsym: set([target])}}
             self.db['alerts'][chatId] = alerts
             msg = 'Notification set for {} {} {} {}.'.format(
-                self.get_symbols()[fsym], 'below' if op == 'LOWER' else 'above', self.format_price(target, tsym), tsym)
+                self.get_symbols()[fsym], 'below' if op == 'LOWER' else 'above', self.format_price(target), tsym)
             self.sendMessage(msg, chatId)
         else:
             self.sendMessage('Unknown command', chatId)
@@ -180,7 +178,7 @@ class TgBot(object):
                         for target in targets:
                             if op == lower and price < target or op == higher and price > target:
                                 self.sendMessage('{} is {} {} at {} {}'.format(self.get_symbols()[fsym],
-                                'below' if op == lower else 'above', self.format_price(target, tsym), self.format_price(price, tsym), tsym), chatId)
+                                'below' if op == lower else 'above', self.format_price(target), self.format_price(price), tsym), chatId)
                                 toRemove.append((fsym, tsym, target, chatId, op))
 
         for tr in toRemove:
@@ -198,11 +196,11 @@ class TgBot(object):
 
     def init(self):
         try:
-            with open(self.db_FILENAME, 'rb') as fp:
+            with open(self.DB_FILENAME, 'rb') as fp:
                 self.db = pickle.load(fp)
         except:
             self.db = {}
-        self.log("self.db at start:\n {}".format(self.db))
+        self.log("db at start:\n {}".format(self.db))
         self.last_update = self.db['last_update'] if 'last_update' in self.db else 0
 
     def persist_db(self):

@@ -104,7 +104,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-db.json
+db.pickle
+cache.pickle
+
 nohup.out
 config.py
-output_images/*.*
+charts/*.png

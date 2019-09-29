@@ -84,11 +84,11 @@ class DrawChart:
                 maxVal = c.high
 
         self.draw_chart_frame(draw, minVal, maxVal)
-        print('totalMin: {}, max: {}'.format(minVal, maxVal))
+        #print('totalMin: {}, max: {}'.format(minVal, maxVal))
         #normalizing the values
         for k in candles:
             candles[k] = self.normalize_candle(candles[k], minVal, maxVal)
-            print('open: {}, close: {}, low: {}, high {}'.format(c.open,c.close,c.low,c.high))
+            #print('open: {}, close: {}, low: {}, high {}'.format(c.open,c.close,c.low,c.high))
         
         candleWidth = (self.IMG_WIDTH-self.CHART_MARGIN_LEFT-self.CHART_PADDING*2)/len(candles)
 
@@ -103,7 +103,7 @@ class DrawChart:
             x = ((i*candleWidth) + candleWidth/2.0) + self.CHART_MARGIN_LEFT + self.CHART_PADDING
             y1= c.low#low
             y2= c.high#high   
-            print("wick from {} to {}".format(y1, y2))
+            #print("wick from {} to {}".format(y1, y2))
             draw.line([(x,y1), (x,y2)], color, 1)
 
             #draw the body
@@ -112,7 +112,7 @@ class DrawChart:
             y2 = c.close#close
             if abs(y1 - y2) < 1:
                 y2-=(1 - abs(y1 - y2))
-            print("body from {} to {}".format(y1, y2))
+            #print("body from {} to {}".format(y1, y2))
             draw.line([(x,y1), (x,y2)], color, int(math.floor(candleWidth)) - self.CANDLE_PADDING*2)
             i+=1
 
