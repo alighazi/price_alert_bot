@@ -3,9 +3,10 @@ from datetime import datetime
 import collections
 from repository.market import MarketRepository
 import config
+from formating import format_price
 
 class TgBot(object):
-    DB_FILENAME = 'db.pickle'
+    DB_FILENAME = 'data/db.pickle'
     CACHE_DURATION = 10  # seconds
     DEFAULT_FIAT = "USD"
 
@@ -19,10 +20,6 @@ class TgBot(object):
 
     def getTgUrl(self, methodName):
         return 'https://api.telegram.org/bot{}/{}'.format(config.TG_TOKEN, methodName)
-
-    def format_price(self, price):
-        precision = max(1,min(-math.floor(math.log10(price))+2,8))       
-        return f'{price:.{precision}f}'
 
     def get_price(self, fsym, tsym):
         if not self.repository.isPricePairValid(fsym, tsym):
@@ -62,7 +59,7 @@ class TgBot(object):
         self.log('handling command "{}"...'.format(command))
 
         if command == 'start' or command == 'help':
-            resp = "Hi, welcome to the Crypto price notification bot\nSet alerts on your favorite crypto currencies. Get notified and earn $$$"
+            resp = "Hi, welcome to the Crypto price notification bot\nSet alerts on your favorite crypto currencies and get insights into market!"
             self.sendMessage(resp, chatId)
 
         elif command == 'all' or command == 'top':
@@ -101,8 +98,8 @@ class TgBot(object):
                 return
 
             price = self.get_price(fsym, tsym)
-            resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], self.format_price(price),tsym)
-            chartFile = self.repository.get_chart(fsym, tsym)
+            resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], format_price(price),tsym)
+            chartFile = self.repository.get_chart_near(fsym, tsym)
             if chartFile != None:
                 self.sendPhoto(chartFile, resp, chatId)
             else:
@@ -149,7 +146,7 @@ class TgBot(object):
                 alerts[fsym] = {op: {tsym: set([target])}}
             TgBot.db['alerts'][chatId] = alerts
             msg = 'Notification set for {} {} {} {}.'.format(
-                self.get_symbols()[fsym], 'below' if op == 'LOWER' else 'above', self.format_price(target), tsym)
+                self.get_symbols()[fsym], 'below' if op == 'LOWER' else 'above', format_price(target), tsym)
             self.sendMessage(msg, chatId)
         else:
             self.sendMessage('Unknown command', chatId)
@@ -192,7 +189,7 @@ class TgBot(object):
                         for target in targets:
                             if op == lower and price < target or op == higher and price > target:
                                 self.sendMessage('{} is {} {} at {} {}'.format(self.get_symbols()[fsym],
-                                'below' if op == lower else 'above', self.format_price(target), self.format_price(price), tsym), chatId)
+                                'below' if op == lower else 'above', format_price(target), format_price(price), tsym), chatId)
                                 toRemove.append((fsym, tsym, target, chatId, op))
 
         for tr in toRemove:
