@@ -4,6 +4,7 @@ import collections
 from repository.market import MarketRepository
 import config
 from formating import format_price
+from api.binance_rest import CandleInterval
 
 class TgBot(object):
     DB_FILENAME = 'data/db.pickle'
@@ -87,7 +88,7 @@ class TgBot(object):
         elif command.startswith('price'):
             parts = command.upper().split()
             if len(parts) < 2:
-                self.sendMessage("Invalid command", chatId)
+                self.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
                 return
             fsym = parts[1]
             tsym = self.DEFAULT_FIAT
@@ -104,6 +105,27 @@ class TgBot(object):
                 self.sendPhoto(chartFile, resp, chatId)
             else:
                 self.sendMessage(resp, chatId)
+        elif command.startswith('chart'):
+            parts = command.upper().split()
+            if len(parts) < 2:
+                self.sendMessage("Invalid command, enter 2 symbols and timeframe, eg: BTC USD 4h", chatId)
+                return
+            fsym = parts[1]
+            tsym = self.DEFAULT_FIAT
+            tf = CandleInterval.ONE_HOUR
+            if len(parts) > 2:
+                tsym = parts[2]
+                if len(parts) > 3 and CandleInterval.has_value(parts[3]):
+                    tf = CandleInterval(parts[3])
+            if not self.repository.isPricePairValid(fsym, tsym):
+                self.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
+                return
+
+            chartFile = self.repository.get_chart(fsym, tsym, tf)
+            if chartFile != None:
+                self.sendPhoto(chartFile, resp, chatId)
+            else:
+                self.sendMessage(f"no chart for {fsym} {tsym} {tf}", chatId)
 
         elif command.startswith('lower') or command.startswith('higher'):
             parts = command.upper().split()

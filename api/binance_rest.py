@@ -63,4 +63,9 @@ class CandleInterval(Enum):
     ONE_MONTH = "1M"
 
     def __str__(self):
-     return self.value
+        return self.value
+
+    #to enable checking wether a value is a valid enum
+    @classmethod
+    def has_value(cls, value):
+        return value in cls._value2member_map_ 

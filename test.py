@@ -32,8 +32,11 @@ total_candles = 120
 
 # sex("100m", "5F")
 
-mr = MarketRepository()
-mr.get_chart_near("trx", "btc")
+# mr = MarketRepository()
+# mr.get_chart_near("trx", "btc")
 
+
+
+print(CandleInterval.has_value("4h"))
 
 # cache.persist()
