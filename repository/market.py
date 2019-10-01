@@ -64,7 +64,7 @@ class MarketRepository(object):
     @cache("market.chart", 30, [1,2])
     def get_chart(self, fsym, tsym):
         TF = CandleInterval.FOUR_HOUR
-        CANDLES = 120
+        CANDLES = 240
         ROOT = "charts"
         
         print(f"generating chart for {fsym} {tsym} ")
