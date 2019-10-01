@@ -61,32 +61,36 @@ class MarketRepository(object):
         return self.price_partitions[partition][fsym][tsym]
     
 
-    @cache("market.chart", 30, [1,2])
-    def get_chart(self, fsym, tsym):
-        TF = CandleInterval.FOUR_HOUR
-        CANDLES = 240
+    @cache("market.chart", 30, [1,2,3])
+    def get_chart(self, fsym, tsym, tf):
+        CANDLES = 170
         ROOT = "charts"
-        
-        print(f"generating chart for {fsym} {tsym} ")
+
         fsym = fsym.upper()
-        tsym = tsym.upper()
+        tsym = tsym.upper()        
+        print(f"generating chart for {fsym} {tsym} ")
 
         if tsym == "USD":
             tsym = "USDT"
         pair = fsym + tsym
 
-        filenameBase= f"{pair}-{TF.value}-{CANDLES}"
+        filenameBase= f"{pair}-{tf.value}-{CANDLES}"
         toRemove = [f for f in listdir(ROOT) if f.startswith(filenameBase)]
         for f in toRemove:
             remove(f"{ROOT}/{f}")
         filename= f"{ROOT}/{filenameBase}-{time()}.png"
         pairs = self.binance_api.get_pairs()
         if (fsym, tsym) in pairs:
-            c = self.binance_api.get_candles(pair, TF, CANDLES)
+            c = self.binance_api.get_candles(pair, tf, CANDLES)
             dr = DrawChart()
-            dr.save(filename, c)
+            dr.save(filename, c, f"{pair}-{tf.value}-Binance\n@crypto_price_notification_bot ")
             return filename
         return None
+    
+    def get_chart_far(self, fsym, tsym):
+        return self.get_chart(fsym, tsym, CandleInterval.FOUR_HOUR)
+    def get_chart_near(self, fsym, tsym):
+        return self.get_chart(fsym, tsym, CandleInterval.FIFTEEN_MINUTE)        
 
 
 

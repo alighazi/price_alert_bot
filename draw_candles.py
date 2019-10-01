@@ -3,6 +3,7 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw 
 from candle import Candle
+from formating import format_price
 
 class DrawChart:
     IMG_WIDTH = 1280 
@@ -37,7 +38,7 @@ class DrawChart:
         bottom -  (candle.close - minVal)* ratio, 
         candle.open_time, candle.close_time, candle.volume)
 
-    def draw_chart_frame(self, draw, minVal, maxVal):
+    def draw_chart_frame(self, draw, minVal, maxVal, symbol):
         color=(255,255,255)
         left = self.CHART_MARGIN_LEFT
         right = self.IMG_WIDTH
@@ -49,8 +50,8 @@ class DrawChart:
         # size = draw.textsize(str(valStr), font)
         # draw.text((left-size[0]-MARGIN, bottom - size[1]- self.CHART_PADDING - MARGIN), str(valStr), color, font)
 
-        length = int(math.floor(math.log10(math.floor(maxVal))+1)) if maxVal>=1 else 0
-        precision = 8 - length
+        # length = int(math.floor(math.log10(math.floor(maxVal))+1)) if maxVal>=1 else 0
+        # precision = 8 - length
 
         color_bg=(100,100,100)
         LINES=12
@@ -60,15 +61,18 @@ class DrawChart:
             x = left + (i/LINES) * (right - left)
             draw.line([(x, top), (x, bottom)], color_bg, 1)
             val =minVal + (i/LINES) * (maxVal - minVal)
-            valStr = f"{val:{length}.{precision}f}"
+            valStr = format_price(val)
             size = draw.textsize(valStr, font)
             draw.text((left-size[0]-MARGIN, y - size[1]-MARGIN), valStr, color, font)
 
         draw.line([(left, bottom), (right, bottom)], color, 1)
         draw.line([(left, top), (left, bottom)], color, 1)
+        #draw legend
+        font_legend = ImageFont.truetype(self.FONT_PATH, 18)
+        draw.text((left, top), symbol, (255,255,0), font_legend)
 
 
-    def draw_candles(self, draw, candles):
+    def draw_candles(self, draw, candles, symbol):
         if len(candles) == 0:
             return #nothing to draw
         self.validate_candles(candles)
@@ -83,7 +87,7 @@ class DrawChart:
             if c.high > maxVal:
                 maxVal = c.high
 
-        self.draw_chart_frame(draw, minVal, maxVal)
+        self.draw_chart_frame(draw, minVal, maxVal, symbol)
         #print('totalMin: {}, max: {}'.format(minVal, maxVal))
         #normalizing the values
         for k in candles:
@@ -116,9 +120,9 @@ class DrawChart:
             draw.line([(x,y1), (x,y2)], color, int(math.floor(candleWidth)) - self.CANDLE_PADDING*2)
             i+=1
 
-    def save(self, output_path, candles):
+    def save(self, output_path, candles, symbol):
         img = Image.new('RGB', (self.IMG_WIDTH,self.IMG_HEIGHT))
         draw = ImageDraw.Draw(img)
-        self.draw_candles(draw, candles)
+        self.draw_candles(draw, candles, symbol)
         img.save(output_path)
 

@@ -61,3 +61,6 @@ class CandleInterval(Enum):
     THREE_DAY = "3d"
     ONE_WEEK = "1w"
     ONE_MONTH = "1M"
+
+    def __str__(self):
+     return self.value

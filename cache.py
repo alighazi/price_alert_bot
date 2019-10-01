@@ -5,7 +5,7 @@ from datetime import datetime
 
 class cache:
     cache = {}
-    FILENAME="cache.pickle"
+    FILENAME="data/cache.pickle"
     LOADED = False
     def __init__(self, key, secs, per_args = []):
         if not cache.LOADED:
@@ -26,9 +26,13 @@ class cache:
  
     def __call__(self, fn):
         def wrapped(*args, **kwargs):
+            print(self.__per_args)
+            print(args)
             key = self.__key
             for arg_pos in self.__per_args:
-                key +="|"+args[arg_pos]
+                if arg_pos >= len(args):
+                    raise IndexError(f"the {arg_pos}th argument not found in the invocation of the method: {fn}. make sure you are calling the method with the right number of the arguments")
+                key +="|"+ str(args[arg_pos])
             if key in cache.cache:
                 entry = cache.cache[key]
                 print(f"cache found for key: {key}")

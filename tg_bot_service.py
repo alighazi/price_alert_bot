@@ -1,5 +1,7 @@
 import traceback, time
 import tg_bot
+import tg_bot_service
+from cache import cache
 
 tgbot= tg_bot.TgBot()
 tgbot.init()
@@ -25,5 +27,6 @@ while loop:
         traceback.print_exc()      
 
     tgbot.persist_db()
+    cache.persist()
     time.sleep(1)
 

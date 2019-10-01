@@ -32,7 +32,8 @@ total_candles = 120
 
 # sex("100m", "5F")
 
-# mr = MarketRepository()
-# mr.get_chart("btc", "usd")
+mr = MarketRepository()
+mr.get_chart_near("trx", "btc")
+
 
 # cache.persist()
