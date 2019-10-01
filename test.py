@@ -25,14 +25,14 @@ total_candles = 120
 
 #print(b.get_pairs())
 
-@cache("sex",5,[0,1])
-def sex(lengthOfDick, sizeOfCup):
-    print("my name is ali and I am sexy")
-    print(f"{lengthOfDick}/{sizeOfCup}")
+# @cache("sex",5,[0,1])
+# def sex(lengthOfDick, sizeOfCup):
+#     print("my name is ali and I am sexy")
+#     print(f"{lengthOfDick}/{sizeOfCup}")
 
-sex("100m", "5F")
+# sex("100m", "5F")
 
-mr = MarketRepository()
-mr.get_chart("btc", "usd")
+# mr = MarketRepository()
+# mr.get_chart("btc", "usd")
 
-cache.persist()
+# cache.persist()

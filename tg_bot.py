@@ -1,4 +1,4 @@
-import sys, math, time, requests, pickle
+import sys, math, time, requests, pickle, traceback
 from datetime import datetime
 import collections
 from repository.market import MarketRepository
@@ -12,7 +12,7 @@ class TgBot(object):
     db = {} #this makes db static!
 
     def __init__(self):
-        self.Repository = MarketRepository()
+        self.repository = MarketRepository()
 
     def log(self, str):
         print('{} - {}'.format(datetime.today(), str))
@@ -25,16 +25,16 @@ class TgBot(object):
         return f'{price:.{precision}f}'
 
     def get_price(self, fsym, tsym):
-        if not self.Repository.isPricePairValid(fsym, tsym):
+        if not self.repository.isPricePairValid(fsym, tsym):
             print(f"price pair not valid {fsym} {tsym}")
         else:
-            return self.Repository.get_price(fsym, tsym)
+            return self.repository.get_price(fsym, tsym)
 
     def getTop(self):
-        return self.Repository.get_top_coins()
+        return self.repository.get_top_coins()
 
     def get_symbols(self):
-        return self.Repository.get_symbols()
+        return self.repository.get_symbols()
 
     def sendMessage(self, msg, chatid, parse_mode=None):
         url = self.getTgUrl('sendMessage')
@@ -43,6 +43,16 @@ class TgBot(object):
             'text': msg,
             'parse_mode': parse_mode
         })
+        return r
+
+    def sendPhoto(self, fileName, caption, chatid, parse_mode=None):
+        files = {'photo': open(fileName, 'rb')}
+        url = self.getTgUrl('sendPhoto')
+        r = requests.post(url=url, data={
+            'chat_id': chatid,
+            'caption': caption,
+            'parse_mode': parse_mode,
+        }, files= files)
         return r
 
     def handleBotCommand(self, message):
@@ -60,8 +70,8 @@ class TgBot(object):
             self.sendMessage(resp, chatId, 'Markdown')
 
         elif command == 'alerts':
-            if 'alerts' in self.db and chatId in self.db['alerts']:
-                alerts=self.db['alerts'][chatId]
+            if 'alerts' in TgBot.db and chatId in TgBot.db['alerts']:
+                alerts=TgBot.db['alerts'][chatId]
                 msg='Current alerts:\n'
                 for fsym in alerts:
                     for op in alerts[fsym]:
@@ -73,8 +83,8 @@ class TgBot(object):
                 self.sendMessage('No alert is set',chatId)
 
         elif command=='clear':
-            if 'alerts' in self.db and chatId in self.db['alerts']:
-                self.db['alerts'].pop(chatId)
+            if 'alerts' in TgBot.db and chatId in TgBot.db['alerts']:
+                TgBot.db['alerts'].pop(chatId)
             self.sendMessage('Done.',chatId)
         
         elif command.startswith('price'):
@@ -86,13 +96,17 @@ class TgBot(object):
             tsym = self.DEFAULT_FIAT
             if len(parts) > 2:
                 tsym = parts[2]
-            if not self.Repository.isPricePairValid(fsym, tsym):
+            if not self.repository.isPricePairValid(fsym, tsym):
                 self.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
                 return
 
             price = self.get_price(fsym, tsym)
             resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], self.format_price(price),tsym)
-            self.sendMessage(resp, chatId)
+            chartFile = self.repository.get_chart(fsym, tsym)
+            if chartFile != None:
+                self.sendPhoto(chartFile, resp, chatId)
+            else:
+                self.sendMessage(resp, chatId)
 
         elif command.startswith('lower') or command.startswith('higher'):
             parts = command.upper().split()
@@ -114,13 +128,13 @@ class TgBot(object):
                 target=target/(100.0*1000.0*1000.0)
                 tsym="BTC"
 
-            if tsym not in self.Repository.TSYMS:
+            if tsym not in self.repository.TSYMS:
                 self.sendMessage('Invalid symbol {}'.format(tsym), chatId)
                 return
 
-            if 'alerts' not in self.db:
-                self.db['alerts'] = {}
-            alerts = self.db['alerts'][chatId] if chatId in self.db['alerts'] else {}
+            if 'alerts' not in TgBot.db:
+                TgBot.db['alerts'] = {}
+            alerts = TgBot.db['alerts'][chatId] if chatId in TgBot.db['alerts'] else {}
             if fsym in alerts:
                 alert = alerts[fsym]
                 if op in alert and type(alert[op]) is dict:
@@ -133,7 +147,7 @@ class TgBot(object):
                     alert[op] = {tsym: set([target])}
             else:
                 alerts[fsym] = {op: {tsym: set([target])}}
-            self.db['alerts'][chatId] = alerts
+            TgBot.db['alerts'][chatId] = alerts
             msg = 'Notification set for {} {} {} {}.'.format(
                 self.get_symbols()[fsym], 'below' if op == 'LOWER' else 'above', self.format_price(target), tsym)
             self.sendMessage(msg, chatId)
@@ -149,7 +163,7 @@ class TgBot(object):
             self.sendMessage(f'Invalid command {text}', chatId)
 
     def removeAlert(self, fsym, tsym, target, chatId, op):
-        alerts = self.db['alerts']
+        alerts = TgBot.db['alerts']
         alerts[chatId][fsym][op][tsym].remove(target)
         if len(alerts[chatId][fsym][op][tsym]) == 0:
             alerts[chatId][fsym][op].pop(tsym)
@@ -161,11 +175,11 @@ class TgBot(object):
                         alerts.pop(chatId)
 
     def processAlerts(self):
-        if 'alerts' not in self.db:
+        if 'alerts' not in TgBot.db:
             return
         higher = 'HIGHER'
         lower = 'LOWER'
-        alerts = self.db['alerts']
+        alerts = TgBot.db['alerts']
         toRemove = []
         for chatId in alerts:
             for fsym in alerts[chatId]:
@@ -194,15 +208,28 @@ class TgBot(object):
             return None
         return updates['result']
 
+    def processUpdates(self, updates):
+        for update in updates:
+            print('processing {}...'.format(update['update_id']))
+            message = update['message'] if 'message' in update else update['edited_message']
+            try:
+                self.processMessage(message)
+                self.last_update = TgBot.db['last_update'] = update['update_id']
+            except:
+                traceback.print_exc()
+
     def init(self):
         try:
-            with open(self.DB_FILENAME, 'rb') as fp:
-                self.db = pickle.load(fp)
+            with open(TgBot.DB_FILENAME, 'rb') as fp:
+                TgBot.db = pickle.load(fp)
         except:
-            self.db = {}
-        self.log("db at start:\n {}".format(self.db))
-        self.last_update = self.db['last_update'] if 'last_update' in self.db else 0
+            self.log("error loading db")
+            TgBot.db = {}
+        self.log("db at start:\n {}".format(TgBot.db))
+        self.last_update = TgBot.db['last_update'] if 'last_update' in TgBot.db else 0
 
     def persist_db(self):
-        with open(self.DB_FILENAME, 'wb') as fp:
-            pickle.dump(self.db, fp)
+        with open(TgBot.DB_FILENAME, 'wb') as fp:
+            self.log("db at save:")
+            self.log(TgBot.db)
+            pickle.dump(TgBot.db, fp)

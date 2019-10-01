@@ -85,7 +85,8 @@ class MarketRepository(object):
             c = self.binance_api.get_candles(pair, TF, CANDLES)
             dr = DrawChart()
             dr.save(filename, c)
-        return filename
+            return filename
+        return None
 
 
 
