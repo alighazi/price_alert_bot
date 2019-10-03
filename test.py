@@ -37,6 +37,7 @@ total_candles = 120
 
 
 
-print(CandleInterval.has_value("4h"))
+#print(CandleInterval.has_value("4h"))
+
 
 # cache.persist()

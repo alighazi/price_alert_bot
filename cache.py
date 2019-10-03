@@ -26,8 +26,6 @@ class cache:
  
     def __call__(self, fn):
         def wrapped(*args, **kwargs):
-            print(self.__per_args)
-            print(args)
             key = self.__key
             for arg_pos in self.__per_args:
                 if arg_pos >= len(args):
@@ -44,7 +42,7 @@ class cache:
             
             returnValue = fn(*args, **kwargs)
             if returnValue== None:
-                print(f"warning, None return! key: {key}")
+                print(f"warning, 'None' return! key: {key}")
             cache.cache[key] = [time(), returnValue]
             return returnValue        
  
@@ -53,7 +51,6 @@ class cache:
     @staticmethod
     def persist():
         with open(cache.FILENAME, 'wb') as fp:
-            print(f"persisting cache: {len(cache.cache)} entries")
             pickle.dump(cache.cache, fp)
 
     @staticmethod

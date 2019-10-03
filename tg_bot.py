@@ -86,14 +86,14 @@ class TgBot(object):
             self.sendMessage('Done.',chatId)
         
         elif command.startswith('price'):
-            parts = command.upper().split()
+            parts = command.split()
             if len(parts) < 2:
                 self.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
                 return
-            fsym = parts[1]
+            fsym = parts[1].upper()
             tsym = self.DEFAULT_FIAT
             if len(parts) > 2:
-                tsym = parts[2]
+                tsym = parts[2].upper()
             if not self.repository.isPricePairValid(fsym, tsym):
                 self.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
                 return
@@ -106,23 +106,26 @@ class TgBot(object):
             else:
                 self.sendMessage(resp, chatId)
         elif command.startswith('chart'):
-            parts = command.upper().split()
+            parts = command.split()
             if len(parts) < 2:
                 self.sendMessage("Invalid command, enter 2 symbols and timeframe, eg: BTC USD 4h", chatId)
                 return
-            fsym = parts[1]
+            fsym = parts[1].upper()
             tsym = self.DEFAULT_FIAT
             tf = CandleInterval.ONE_HOUR
             if len(parts) > 2:
-                tsym = parts[2]
+                tsym = parts[2].upper()                
                 if len(parts) > 3 and CandleInterval.has_value(parts[3]):
                     tf = CandleInterval(parts[3])
-            if not self.repository.isPricePairValid(fsym, tsym):
-                self.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
-                return
+
 
             chartFile = self.repository.get_chart(fsym, tsym, tf)
             if chartFile != None:
+                price = self.get_price(fsym, tsym)
+                if self.repository.isPricePairValid(fsym, tsym):
+                    resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], format_price(price),tsym)
+                else:
+                    resp = "Enjoy the binance chart!"
                 self.sendPhoto(chartFile, resp, chatId)
             else:
                 self.sendMessage(f"no chart for {fsym} {tsym} {tf}", chatId)
@@ -244,11 +247,10 @@ class TgBot(object):
         except:
             self.log("error loading db")
             TgBot.db = {}
-        self.log("db at start:\n {}".format(TgBot.db))
+        #self.log("db at start: {}".format(TgBot.db))
         self.last_update = TgBot.db['last_update'] if 'last_update' in TgBot.db else 0
 
     def persist_db(self):
         with open(TgBot.DB_FILENAME, 'wb') as fp:
-            self.log("db at save:")
-            self.log(TgBot.db)
+            #self.log(f"db at save: {TgBot.db}")
             pickle.dump(TgBot.db, fp)
