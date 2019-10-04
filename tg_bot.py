@@ -121,7 +121,7 @@ class TgBot(object):
                 self.sendMessage(resp, chatId)
         elif command.startswith('chart') or command.startswith('ch'):
             parts = command.split()
-            if len(parts) > 3:
+            if len(parts) > 4:
                 self.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
                 return
 
