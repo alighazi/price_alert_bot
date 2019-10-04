@@ -22,7 +22,7 @@ class TgBot(object):
     def log(self, str):
         print('{} - {}'.format(datetime.today(), str))
     
-#    @cache("TgBot.Help", 100000)
+    @cache("TgBot.Help", 100000)
     def help(self):
         self.log("reading help file")
         with open(TgBot.HELP_FILENAME, 'rb') as fp:
