@@ -33,12 +33,10 @@ class cache:
                 key +="|"+ str(args[arg_pos])
             if key in cache.cache:
                 entry = cache.cache[key]
-                print(f"cache found for key: {key}")
                 if entry[0] + self.__secs >= time():
-                    print("valid! returning!")
                     return entry[1]
                 else:
-                    print("expired!")
+                    print("cache expired for key: {key}")
             
             returnValue = fn(*args, **kwargs)
             if returnValue== None:

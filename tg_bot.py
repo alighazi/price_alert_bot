@@ -1,6 +1,7 @@
 import sys, math, time, requests, pickle, traceback
 from datetime import datetime
 import collections
+from cache import cache
 from repository.market import MarketRepository
 import config
 from formating import format_price
@@ -8,8 +9,10 @@ from api.binance_rest import CandleInterval
 
 class TgBot(object):
     DB_FILENAME = 'data/db.pickle'
+    HELP_FILENAME = 'help.md'
     CACHE_DURATION = 10  # seconds
     DEFAULT_FIAT = "USD"
+    DEFAULT_COIN = "BTC"
 
     db = {} #this makes db static!
 
@@ -18,6 +21,12 @@ class TgBot(object):
 
     def log(self, str):
         print('{} - {}'.format(datetime.today(), str))
+    
+#    @cache("TgBot.Help", 100000)
+    def help(self):
+        self.log("reading help file")
+        with open(TgBot.HELP_FILENAME, 'rb') as fp:
+            return fp.read()
 
     def getTgUrl(self, methodName):
         return 'https://api.telegram.org/bot{}/{}'.format(config.TG_TOKEN, methodName)
@@ -60,8 +69,8 @@ class TgBot(object):
         self.log('handling command "{}"...'.format(command))
 
         if command == 'start' or command == 'help':
-            resp = "Hi, welcome to the Crypto price notification bot\nSet alerts on your favorite crypto currencies and get insights into market!"
-            self.sendMessage(resp, chatId)
+            resp = self.help()
+            self.sendMessage(resp, chatId, "Markdown")
 
         elif command == 'all' or command == 'top':
             resp = self.getTop()
@@ -85,15 +94,20 @@ class TgBot(object):
                 TgBot.db['alerts'].pop(chatId)
             self.sendMessage('Done.',chatId)
         
-        elif command.startswith('price'):
+        elif command.startswith('price') or command.startswith('p'):
             parts = command.split()
-            if len(parts) < 2:
+            if len(parts) > 3:
                 self.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
                 return
-            fsym = parts[1].upper()
+
+            fsym = TgBot.DEFAULT_COIN
+            if len(parts) >1:
+                fsym = parts[1].upper()
+
             tsym = self.DEFAULT_FIAT
             if len(parts) > 2:
                 tsym = parts[2].upper()
+
             if not self.repository.isPricePairValid(fsym, tsym):
                 self.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
                 return
@@ -105,12 +119,16 @@ class TgBot(object):
                 self.sendPhoto(chartFile, resp, chatId)
             else:
                 self.sendMessage(resp, chatId)
-        elif command.startswith('chart'):
+        elif command.startswith('chart') or command.startswith('ch'):
             parts = command.split()
-            if len(parts) < 2:
-                self.sendMessage("Invalid command, enter 2 symbols and timeframe, eg: BTC USD 4h", chatId)
+            if len(parts) > 3:
+                self.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
                 return
-            fsym = parts[1].upper()
+
+            fsym = TgBot.DEFAULT_COIN
+            if len(parts) > 1:
+                fsym = parts[1].upper()
+
             tsym = self.DEFAULT_FIAT
             tf = CandleInterval.ONE_HOUR
             if len(parts) > 2:
@@ -181,8 +199,9 @@ class TgBot(object):
         chatId = message['chat']['id']
         if('entities' in message and message['entities'][0]['type'] == 'bot_command'):
             self.handleBotCommand(message)
-        else:
-            self.sendMessage(f'Invalid command {text}', chatId)
+        # no need to handle non commands
+        # else: 
+        #     self.sendMessage(f'Invalid command {text}', chatId)
 
     def removeAlert(self, fsym, tsym, target, chatId, op):
         alerts = TgBot.db['alerts']
