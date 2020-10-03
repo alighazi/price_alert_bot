@@ -6,12 +6,13 @@ from draw_candles import DrawChart
 from cache import cache
 from repository.market import MarketRepository
 import tg_bot
+from api import cryptocompare
 
-b = RestApiBinance()
-pair = "BTCUSDT"
-output_dir="output_images"
-candle_interval = CandleInterval.FOUR_HOUR
-total_candles = 120
+# b = RestApiBinance()
+# pair = "BTCUSDT"
+# output_dir="output_images"
+# candle_interval = CandleInterval.FOUR_HOUR
+# total_candles = 120
 
 #c = b.get_candles(pair, candle_interval, total_candles)
 #print(c)
@@ -41,3 +42,6 @@ total_candles = 120
 
 
 # cache.persist()
+m= MarketRepository()
+top = m.get_top_coins()
+print(top)

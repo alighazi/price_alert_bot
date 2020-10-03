@@ -8,8 +8,7 @@ from os import remove,listdir
 from cache import cache
 from api.binance_rest import RestApiBinance,CandleInterval
 from draw_candles import DrawChart
-from api.cryptocompare import get_symbols, get_price
-from api.coinmarketcap import get_top
+from api.cryptocompare import get_symbols, get_price, get_top
 
 class MarketRepository(object):  
     binance_api = RestApiBinance()
@@ -23,20 +22,20 @@ class MarketRepository(object):
     def isPricePairValid(self, fsym, tsym):
         return fsym in self.get_symbols().keys() and tsym in self.TSYMS
 
-    @cache("market.top", 20)
-    def get_top_coins(self):          
-        top_coins = get_top()
+    @cache("market.top", 30)
+    def get_top_coins(self):   
+        tsym = "USD"       #must be in CAPS
+        top_coins = get_top(tsym)
         out = "`"
         for coin in top_coins:
-            cap_f = math.floor(float(coin['market_cap_usd']))
+            cap_f = math.floor(float(coin["cap"]))
             cap_s =''
             if cap_f>1000*1000*1000:
-                cap_s ='${:.3f}B\n'.format(cap_f/(1000*1000*1000))
+                cap_s ='${:.2f}B'.format(cap_f/(1000*1000*1000))
             else:
-                cap_s ='${:.3f}M\n'.format(cap_f/(1000*1000))
-                
-            out = out+coin['rank']+': ' + coin['symbol']+' '+coin['price_usd'] + \
-                '$\t'+coin['price_btc']+'BTC\t' + cap_s
+                cap_s ='${:.3f}M'.format(cap_f/(1000*1000))
+
+            out = f"{out}{coin['rank']}: {coin['symbol']} {coin['price']} \t {cap_s}\n"
         out = out+'`'
         return out
     
