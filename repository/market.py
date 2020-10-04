@@ -8,14 +8,15 @@ from os import remove,listdir
 from cache import cache
 from api.binance_rest import RestApiBinance,CandleInterval
 from draw_candles import DrawChart
-from api.cryptocompare import get_symbols, get_price, get_top
+from api.cryptocompare import CryptoCompare
 
 class MarketRepository(object):  
     binance_api = RestApiBinance()
+    crypto_compare = CryptoCompare()
 
     @cache("market.symbols", 3600)
     def get_symbols(self):
-        symbols = get_symbols()
+        symbols = self.crypto_compare.get_symbols()
         return symbols        
 
     TSYMS = ['BTC','USD','EUR','SEK','IRR','JPY','CNY','GBP','CAD','AUD','RUB','INR','USDT','ETH']
@@ -25,7 +26,7 @@ class MarketRepository(object):
     @cache("market.top", 30)
     def get_top_coins(self):   
         tsym = "USD"       #must be in CAPS
-        top_coins = get_top(tsym)
+        top_coins = self.crypto_compare.get_top(tsym)
         out = "`"
         for coin in top_coins:
             cap_f = math.floor(float(coin["cap"]))
@@ -54,7 +55,7 @@ class MarketRepository(object):
             index_start = max(0, partition * MarketRepository.PARTITION_SIZE - 2)
             index_end = index_start + MarketRepository.PARTITION_SIZE
             fsyms = list(symbols.keys())[index_start : index_end]
-            self.price_partitions[partition] = get_price(fsyms, self.TSYMS)
+            self.price_partitions[partition] = self.crypto_compare.get_price(fsyms, self.TSYMS)
             MarketRepository.last_price_queries[partition] = time()
         
         return self.price_partitions[partition][fsym][tsym]

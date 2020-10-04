@@ -7,17 +7,28 @@ import config
 from formating import format_price
 from api.binance_rest import CandleInterval
 
+import requests
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+
 class TgBot(object):
     DB_FILENAME = 'data/db.pickle'
     HELP_FILENAME = 'help.md'
     CACHE_DURATION = 10  # seconds
     DEFAULT_FIAT = "USD"
     DEFAULT_COIN = "BTC"
+    TG_BASE_URL ="https://api.telegram.org"
 
     db = {} #this makes db static!
 
     def __init__(self):
         self.repository = MarketRepository()
+        self.request_session = requests.Session()
+        retries = Retry(total=5,
+                        backoff_factor=0.1,
+                        status_forcelist=[ 500, 502, 503, 504 ])
+
+        self.request_session.mount(self.TG_BASE_URL, HTTPAdapter(max_retries=retries))
 
     def log(self, str):
         print('{} - {}'.format(datetime.today(), str))
@@ -29,7 +40,7 @@ class TgBot(object):
             return fp.read()
 
     def getTgUrl(self, methodName):
-        return 'https://api.telegram.org/bot{}/{}'.format(config.TG_TOKEN, methodName)
+        return f'{self.TG_BASE_URL}/bot{config.TG_TOKEN}/{methodName}'
 
     def get_price(self, fsym, tsym):
         if not self.repository.isPricePairValid(fsym, tsym):
@@ -55,7 +66,7 @@ class TgBot(object):
     def sendPhoto(self, fileName, caption, chatid, parse_mode=None):
         files = {'photo': open(fileName, 'rb')}
         url = self.getTgUrl('sendPhoto')
-        r = requests.post(url=url, data={
+        r = self.request_session.post(url=url, data={
             'chat_id': chatid,
             'caption': caption,
             'parse_mode': parse_mode,
@@ -242,7 +253,7 @@ class TgBot(object):
     def getUpdates(self):
         offset = self.last_update+1
         url = self.getTgUrl('getUpdates')
-        r = requests.post(
+        r = self.request_session.post(
             url=url, data={'offset': offset, 'limit': 100, 'timeout': 9})
         updates = r.json()
         if not 'ok' in updates or not updates['ok']:
