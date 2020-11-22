@@ -1,15 +1,14 @@
-import sys, math, time, requests, pickle, traceback
+import math, time, requests, pickle, traceback
 from datetime import datetime
-import collections
 from cache import cache
 from repository.market import MarketRepository
 import config
 from formating import format_price
 from api.binance_rest import CandleInterval
 
-import requests
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
+
 
 class TgBot(object):
     DB_FILENAME = 'data/db.pickle'
@@ -17,9 +16,9 @@ class TgBot(object):
     CACHE_DURATION = 10  # seconds
     DEFAULT_FIAT = "USD"
     DEFAULT_COIN = "BTC"
-    TG_BASE_URL ="https://api.telegram.org"
+    TG_BASE_URL = "https://api.telegram.org"
 
-    db = {} #this makes db static!
+    db = {}  # this makes db static!
 
     def __init__(self):
         self.repository = MarketRepository()
