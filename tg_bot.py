@@ -231,7 +231,7 @@ class TgBot(object):
 
     def processMessage(self, message):
         if "text" not in message:
-            print(F"message doesn't have text! \n {message}"")
+            print(F"message doesn't have text! \n {message}"
         text = message['text']
         chatId = message['chat']['id']
         if('entities' in message and message['entities'][0]['type'] == 'bot_command'):
