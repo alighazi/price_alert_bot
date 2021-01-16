@@ -31,12 +31,7 @@ class TgBot(object):
 
     def log(self, str):
         print('{} - {}'.format(datetime.today(), str))
-    
-    @cache("TgBot.Help", 100000)
-    def help(self):
-        self.log("reading help file")
-        with open(TgBot.HELP_FILENAME, 'rb') as fp:
-            return fp.read()
+
 
     def getTgUrl(self, methodName):
         return f'{self.TG_BASE_URL}/bot{config.TG_TOKEN}/{methodName}'
@@ -71,147 +66,174 @@ class TgBot(object):
             'parse_mode': parse_mode,
         }, files= files)
         return r
-
-    def handleBotCommand(self, message):
-        text = message['text']
-        chatId = message['chat']['id']
-        command = text.partition('/')[2]
-        self.log('handling command "{}"...'.format(command))
-
-        if command == 'start' or command == 'help':
-            resp = self.help()
-            self.sendMessage(resp, chatId, "Markdown")
-
-        elif command == 'all' or command == 'top':
-            resp = self.getTop()
-            self.sendMessage(resp, chatId, 'Markdown')
-
-        elif command == 'alerts':
-            if 'alerts' in TgBot.db and chatId in TgBot.db['alerts']:
-                alerts=TgBot.db['alerts'][chatId]
-                msg='Current alerts:\n'
-                for fsym in alerts:
-                    for op in alerts[fsym]:
-                        for tsym in alerts[fsym][op]:
-                            for target in alerts[fsym][op][tsym]:
-                                msg='{}{} {} {} {}\n'.format(msg, self.get_symbols()[fsym], op, target,tsym)
-                self.sendMessage(msg, chatId)
-            else:
-                self.sendMessage('No alert is set',chatId)
-
-        elif command=='clear':
-            if 'alerts' in TgBot.db and chatId in TgBot.db['alerts']:
-                TgBot.db['alerts'].pop(chatId)
-            self.sendMessage('Done.',chatId)
-        
-        elif command.startswith('price') or command.startswith('p'):
-            parts = command.split()
-            if len(parts) > 3:
-                self.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
-                return
-
-            fsym = TgBot.DEFAULT_COIN
-            if len(parts) >1:
-                fsym = parts[1].upper()
-
-            tsym = self.DEFAULT_FIAT
-            if len(parts) > 2:
-                tsym = parts[2].upper()
-
-            if not self.repository.isPricePairValid(fsym, tsym):
-                self.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
-                return
-
-            price = self.get_price(fsym, tsym)
-            resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], format_price(price),tsym)
-            chartFile = self.repository.get_chart_near(fsym, tsym)
-            if chartFile != None:
-                self.sendPhoto(chartFile, resp, chatId)
-            else:
-                self.sendMessage(resp, chatId)
-        elif command.startswith('chart') or command.startswith('ch'):
-            parts = command.split()
-            if len(parts) > 4:
-                self.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
-                return
-
-            fsym = TgBot.DEFAULT_COIN
-            if len(parts) > 1:
-                fsym = parts[1].upper()
-
-            tsym = self.DEFAULT_FIAT
-            tf = CandleInterval.ONE_HOUR
-            if len(parts) > 2:
-                tsym = parts[2].upper()                
-                if len(parts) > 3 and CandleInterval.has_value(parts[3]):
-                    tf = CandleInterval(parts[3])
-
-
-            chartFile = self.repository.get_chart(fsym, tsym, tf)
-            if chartFile != None:
-                price = self.get_price(fsym, tsym)
-                if self.repository.isPricePairValid(fsym, tsym):
-                    resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], format_price(price),tsym)
-                else:
-                    resp = "Enjoy the binance chart!"
-                self.sendPhoto(chartFile, resp, chatId)
-            else:
-                self.sendMessage(f"no chart for {fsym} {tsym} {tf}", chatId)
-
-        elif command.startswith('lower') or command.startswith('higher'):
-            parts = command.upper().split()
-            if len(parts) < 3 or len(parts) > 4:
-                self.sendMessage("Invalid command", chatId)
-                return
-            op = parts[0]
-            fsym = parts[1]
-            if not fsym in self.get_symbols().keys():
-                self.sendMessage('Invalid symbol "{}"'.format(fsym), chatId)
-                return
-            try:
-                target = float(parts[2])
-            except ValueError:
-                self.sendMessage('Invalid number "{}"'.format(parts[2]), chatId)
-                return
-            tsym = parts[3] if len(parts) > 3 else self.DEFAULT_FIAT
-            if tsym == "SAT" or tsym== "SATS":
-                target=target/(100.0*1000.0*1000.0)
-                tsym="BTC"
-
-            if tsym not in self.repository.TSYMS:
-                self.sendMessage('Invalid symbol {}'.format(tsym), chatId)
-                return
-
-            if 'alerts' not in TgBot.db:
-                TgBot.db['alerts'] = {}
-            alerts = TgBot.db['alerts'][chatId] if chatId in TgBot.db['alerts'] else {}
-            if fsym in alerts:
-                alert = alerts[fsym]
-                if op in alert and type(alert[op]) is dict:
-                    opObj = alert[op]
-                    if tsym in opObj:
-                        opObj[tsym].add(target)
-                    else:
-                        opObj[tsym] = set([target])
-                else:
-                    alert[op] = {tsym: set([target])}
-            else:
-                alerts[fsym] = {op: {tsym: set([target])}}
-            TgBot.db['alerts'][chatId] = alerts
-            msg = 'Notification set for {} {} {} {}.'.format(
-                self.get_symbols()[fsym], 'below' if op == 'LOWER' else 'above', format_price(target), tsym)
+    
+    def alerts(self, chatId, command):
+        if 'alerts' in TgBot.db and chatId in TgBot.db['alerts']:
+            alerts=TgBot.db['alerts'][chatId]
+            msg = 'Current alerts:\n'
+            for fsym in alerts:
+                for op in alerts[fsym]:
+                    for tsym in alerts[fsym][op]:
+                        for target in alerts[fsym][op][tsym]:
+                            msg='{}{} {} {} {}\n'.format(msg, self.get_symbols()[fsym], op, target,tsym)
             self.sendMessage(msg, chatId)
         else:
-            self.sendMessage('Unknown command', chatId)
+            self.sendMessage('No alert is set',chatId)
+
+    def clear(self, chatId, command):
+        if 'alerts' in TgBot.db and chatId in TgBot.db['alerts']:
+            TgBot.db['alerts'].pop(chatId)
+        self.sendMessage('Done.',chatId)
+
+    def price(self, chatId, command):
+        parts = command.split()
+        if len(parts) > 3:
+            self.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
+            return
+
+        fsym = TgBot.DEFAULT_COIN
+        if len(parts) >1:
+            fsym = parts[1].upper()
+
+        tsym = self.DEFAULT_FIAT
+        if len(parts) > 2:
+            tsym = parts[2].upper()
+
+        if not self.repository.isPricePairValid(fsym, tsym):
+            self.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
+            return
+
+        price = self.get_price(fsym, tsym)
+        resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], format_price(price),tsym)
+        chartFile = self.repository.get_chart_near(fsym, tsym)
+        if chartFile != None:
+            self.sendPhoto(chartFile, resp, chatId)
+        else:
+            self.sendMessage(resp, chatId)
+
+    def chart(self, chatId, command):
+        parts = command.split()
+        if len(parts) > 4:
+            self.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
+            return
+
+        fsym = TgBot.DEFAULT_COIN
+        if len(parts) > 1:
+            fsym = parts[1].upper()
+
+        tsym = self.DEFAULT_FIAT
+        tf = CandleInterval.ONE_HOUR
+        if len(parts) > 2:
+            tsym = parts[2].upper()                
+            if len(parts) > 3 and CandleInterval.has_value(parts[3]):
+                tf = CandleInterval(parts[3])
+
+
+        chartFile = self.repository.get_chart(fsym, tsym, tf)
+        if chartFile != None:
+            price = self.get_price(fsym, tsym)
+            if self.repository.isPricePairValid(fsym, tsym):
+                resp = '1 {} = {} {}'.format(self.get_symbols()[fsym], format_price(price),tsym)
+            else:
+                resp = "Enjoy the binance chart!"
+            self.sendPhoto(chartFile, resp, chatId)
+        else:
+            self.sendMessage(f"no chart for {fsym} {tsym} {tf}", chatId)
+
+    def higher_lower(self, chatId, command):
+        parts = command.upper().split()
+        if len(parts) < 3 or len(parts) > 4:
+            self.sendMessage("Invalid command", chatId)
+            return
+        op = parts[0]
+        fsym = parts[1]
+        if not fsym in self.get_symbols().keys():
+            self.sendMessage('Invalid symbol "{}"'.format(fsym), chatId)
+            return
+        try:
+            target = float(parts[2])
+        except ValueError:
+            self.sendMessage('Invalid number "{}"'.format(parts[2]), chatId)
+            return
+        tsym = parts[3] if len(parts) > 3 else self.DEFAULT_FIAT
+        if tsym == "SAT" or tsym== "SATS":
+            target=target/(100.0*1000.0*1000.0)
+            tsym="BTC"
+
+        if tsym not in self.repository.TSYMS:
+            self.sendMessage('Invalid symbol {}'.format(tsym), chatId)
+            return
+
+        if 'alerts' not in TgBot.db:
+            TgBot.db['alerts'] = {}
+        alerts = TgBot.db['alerts'][chatId] if chatId in TgBot.db['alerts'] else {}
+        if fsym in alerts:
+            alert = alerts[fsym]
+            if op in alert and type(alert[op]) is dict:
+                opObj = alert[op]
+                if tsym in opObj:
+                    opObj[tsym].add(target)
+                else:
+                    opObj[tsym] = set([target])
+            else:
+                alert[op] = {tsym: set([target])}
+        else:
+            alerts[fsym] = {op: {tsym: set([target])}}
+        TgBot.db['alerts'][chatId] = alerts
+        msg = 'Notification set for {} {} {} {}.'.format(
+            self.get_symbols()[fsym], 'below' if op == 'LOWER' else 'above', format_price(target), tsym)
+        self.sendMessage(msg, chatId)
+
+    @cache("cmd.Help", 100000)
+    def help(self, chatId, command):
+        self.log("reading help file")
+        with open(TgBot.HELP_FILENAME, 'rb') as fp:
+            resp = fp.read()
+        self.sendMessage(resp, chatId, "Markdown")
+
+    CommandMap = {
+        "start":    help,
+        "help":     help,
+        "all":      getTop,
+        "top":      getTop,
+        "alerts":   alerts,
+        "clear":    clear,
+        "price":    price,    
+        "p":        price,
+        "chart":    chart,
+        "ch":       chart,
+        "higher":   higher_lower,
+        "lower":    higher_lower
+    }
+
+    def dispatchCommand(self, message):
+            text = message['text']
+            chatId = message['chat']['id']
+            command = text.partition('/')[2]
+            self.log('handling command "{}"...'.format(command))
+
+            if command == 'start' or command == 'help':
+                self.help(chatId, command)
+            elif command == 'all' or command == 'top':
+                self.getTop()
+            elif command == 'alerts':
+                self.alerts(chatId, command)
+            elif command=='clear':
+                self.clear(chatId, command)            
+            elif command.startswith('price') or command.startswith('p'):
+                self.price(chatId, command)
+            elif command.startswith('chart') or command.startswith('ch'):
+                self.chart(chatId, command)
+            elif command.startswith('lower') or command.startswith('higher'):
+                self.higher_lower(chatId, command)
+            else:
+                self.sendMessage('Unknown command', chatId)
 
     def processMessage(self, message):
         text = message['text']
         chatId = message['chat']['id']
         if('entities' in message and message['entities'][0]['type'] == 'bot_command'):
-            self.handleBotCommand(message)
-        # no need to handle non commands
-        # else: 
-        #     self.sendMessage(f'Invalid command {text}', chatId)
+            self.dispatchCommand(message)
 
     def removeAlert(self, fsym, tsym, target, chatId, op):
         alerts = TgBot.db['alerts']

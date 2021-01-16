@@ -7,6 +7,20 @@ from repository.market import MarketRepository
 # syms = cc.get_symbols()
 # print(syms)
 
-mr = MarketRepository()
-p = mr.get_price("BTC", "USD")
-print(p)
+# mr = MarketRepository()
+# p = mr.get_price("BTC", "USD")
+# print(p)
+
+def jick():
+    print("jick jick")
+
+def woof():
+    print("woof")
+
+commands = {
+    "j":jick,
+    "wuf":woof
+}
+
+commands["j"]()
+commands["wuf"]()
