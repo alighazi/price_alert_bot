@@ -12,7 +12,7 @@ def main():
     loop = True
     while loop:    
         try:
-            print(f"{datetime.datetime.today()} Getting updates…")
+            #print(f"{datetime.datetime.today()} Getting updates…")
             updates = tgbot.getUpdates()       
             if updates is None:
                 print('update request failed \n{}'.format(updates))
