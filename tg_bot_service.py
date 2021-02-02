@@ -2,18 +2,20 @@ import traceback
 import time
 import datetime
 import tg_bot
+import tg_api
 from cache import cache
 
 
 def main():
     tgbot = tg_bot.TgBot()
+    tgapi = tg_api.TgApi()
     tgbot.init()
     # main loop
     loop = True
     while loop:    
         try:
             #print(f"{datetime.datetime.today()} Getting updates…")
-            updates = tgbot.getUpdates()       
+            updates = tgapi.getUpdates()       
             if updates is None:
                 print('update request failed \n{}'.format(updates))
             else:

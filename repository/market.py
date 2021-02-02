@@ -61,6 +61,12 @@ class MarketRepository(object):
         return self.price_partitions[partition][fsym][tsym]
     
 
+    def get_price_if_valid(self, fsym, tsym):
+        if not self.isPricePairValid(fsym, tsym):
+            self.log(f"price pair not valid {fsym} {tsym}")
+        else:
+            return self.get_price(fsym, tsym)
+
     @cache("market.chart", 30, [1,2,3])
     def get_chart(self, fsym, tsym, tf):
         CANDLES = 170
@@ -91,6 +97,9 @@ class MarketRepository(object):
         return self.get_chart(fsym, tsym, CandleInterval.FOUR_HOUR)
     def get_chart_near(self, fsym, tsym):
         return self.get_chart(fsym, tsym, CandleInterval.FIFTEEN_MINUTE)        
+    
+    def log(self, str):
+        print('{} - {}'.format(datetime.today(), str))
 
 
 

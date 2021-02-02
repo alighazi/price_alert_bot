@@ -108,5 +108,5 @@ db.pickle
 cache.pickle
 
 nohup.out
-config.py
+secrets.py
 charts/*.png
