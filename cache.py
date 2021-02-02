@@ -36,7 +36,7 @@ class cache:
                 if entry[0] + self.__secs >= time():
                     return entry[1]
                 else:
-                    print("cache expired for key: {key}")
+                    print(f"cache expired for key: {key}")
             
             returnValue = fn(*args, **kwargs)
             if returnValue== None:

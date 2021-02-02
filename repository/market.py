@@ -49,7 +49,7 @@ class MarketRepository(object):
         index=list(symbols.keys()).index(fsym)
         partition= index//MarketRepository.PARTITION_SIZE 
 
-        print('index: {}, partition: {}, fsym: {}, tsym: {}'.format(index,partition, fsym,tsym))
+        #print('index: {}, partition: {}, fsym: {}, tsym: {}'.format(index,partition, fsym,tsym))
 
         if (partition not in MarketRepository.last_price_queries) or (time() - MarketRepository.last_price_queries[partition]> MarketRepository.CACHE_DURATION_PRICE):
             index_start = max(0, partition * MarketRepository.PARTITION_SIZE - 2)
