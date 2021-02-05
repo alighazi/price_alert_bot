@@ -22,10 +22,14 @@ class TgBotService(object):
 
     def processMessage(self, message):
         if "text" not in message:
-            print(F"message doesn't have text! \n {message}")
+            print(F"IGNORING [NO TEXT] {message}")
             return
         if('entities' in message and message['entities'][0]['type'] == 'bot_command'):
             self.command_handler.dispatch(message)
+        else:
+            print(F"IGNORING [NON-COMMAND] {message}")
+
+
 
 
     def removeAlert(self, fsym, tsym, target, chatId, op):
@@ -68,7 +72,6 @@ class TgBotService(object):
 
     def processUpdates(self, updates):
         for update in updates:
-            print('processing {}...'.format(update['update_id']))
             message = update['message'] if 'message' in update else update['edited_message']
             try:
                 self.processMessage(message)
