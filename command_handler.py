@@ -1,13 +1,16 @@
 import math, time, requests, pickle, traceback
 from datetime import datetime
+
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+
 from cache import cache
 from repository.market import MarketRepository
 import config
 from formating import format_price
 from api.binance_rest import CandleInterval
+import logger_config
 
-from urllib3.util.retry import Retry
-from requests.adapters import HTTPAdapter
 
 class CommandHandler:
 
@@ -15,17 +18,18 @@ class CommandHandler:
         self.repository = repository
         self.db = db
         self.api = api
+        self.log = logger_config.get_logger(__name__)
 
     def dispatch(self, message):
             text = message['text']
             chatId = message['chat']['id']
             command = text.partition('/')[2]
-            self.log('handling command "{}"...'.format(command))
+            self.log.info('handling command "{}"...'.format(command))
 
             if command == 'start' or command == 'help':
                 self.help(chatId, command)
             elif command == 'all' or command == 'top':
-                self.getTop()
+                self.getTop(chatId, command)
             elif command == 'alerts':
                 self.alerts(chatId, command)
             elif command=='clear':
@@ -145,13 +149,14 @@ class CommandHandler:
 
     @cache("cmd.Help", 100000)
     def help(self, chatId, command):
-        self.log("reading help file")
+        self.log.info("reading help file")
         with open(config.HELP_FILENAME, 'rb') as fp:
             resp = fp.read()
         self.api.sendMessage(resp, chatId, "Markdown")
 
-    def getTop(self):
-        return self.repository.get_top_coins()
+    def getTop(self, chatId, command):
+        msg =  self.repository.get_top_coins()
+        self.api.sendMessage(msg, chatId, parse_mode="MarkdownV2")
     
     def alerts(self, chatId, command):
         if 'alerts' in self.db and chatId in self.db['alerts']:
@@ -166,8 +171,6 @@ class CommandHandler:
         else:
             self.api.sendMessage('No alert is set',chatId)
 
-    def log(self, str):
-        print('{} - {}'.format(datetime.today(), str))
 
     CommandMap = {
         "start":    help,

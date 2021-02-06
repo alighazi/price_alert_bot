@@ -5,6 +5,7 @@ import collections
 from os import remove,listdir
 
 
+import logger_config
 from cache import cache
 from api.binance_rest import RestApiBinance,CandleInterval
 from draw_candles import DrawChart
@@ -13,6 +14,7 @@ from api.cryptocompare import CryptoCompare
 class MarketRepository(object):  
     binance_api = RestApiBinance()
     crypto_compare = CryptoCompare()
+    log = logger_config.get_logger(__name__)
 
     @cache("market.symbols", 3600)
     def get_symbols(self):
@@ -63,7 +65,7 @@ class MarketRepository(object):
 
     def get_price_if_valid(self, fsym, tsym):
         if not self.isPricePairValid(fsym, tsym):
-            self.log(f"price pair not valid {fsym} {tsym}")
+            self.log.debug(f"price pair not valid {fsym} {tsym}")
         else:
             return self.get_price(fsym, tsym)
 
@@ -97,9 +99,7 @@ class MarketRepository(object):
         return self.get_chart(fsym, tsym, CandleInterval.FOUR_HOUR)
     def get_chart_near(self, fsym, tsym):
         return self.get_chart(fsym, tsym, CandleInterval.FIFTEEN_MINUTE)        
-    
-    def log(self, str):
-        print('{} - {}'.format(datetime.today(), str))
+
 
 
 

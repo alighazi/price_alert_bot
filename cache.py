@@ -2,11 +2,13 @@ import pickle
 from pathlib import Path
 from time import time, sleep
 from datetime import datetime
+import logger_config
 
 class cache:
     cache = {}
     FILENAME="data/cache.pickle"
     LOADED = False
+    log = logger_config.get_logger(__name__)
     def __init__(self, key, secs, per_args = []):
         if not cache.LOADED:
             my_file = Path(cache.FILENAME)
@@ -14,10 +16,10 @@ class cache:
                 try:
                     with open(cache.FILENAME, 'rb') as fp:
                         cache.cache = pickle.load(fp)
-                        print(f"opened cache db: {len(cache.cache)} entries")
+                        self.log.debug(f"opened cache db: {len(cache.cache)} entries")
                         cache.LOADED = True
                 except:
-                    print("failed to load cache file,")
+                    self.log.error("failed to load cache file,")
                     cache.LOADED = False
 
         self.__secs = secs
@@ -36,11 +38,11 @@ class cache:
                 if entry[0] + self.__secs >= time():
                     return entry[1]
                 else:
-                    print(f"cache expired for key: {key}")
+                    self.log.debug(f"cache expired for key: {key}")
             
             returnValue = fn(*args, **kwargs)
             if returnValue== None:
-                print(f"warning, 'None' return! key: {key}")
+                self.log.warn(f"'None' return! key: {key}")
             cache.cache[key] = [time(), returnValue]
             return returnValue        
  

@@ -3,11 +3,13 @@ from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
 from datetime import datetime
+import logger_config
 import config
 
 
 class TgApi:
     TG_BASE_URL = "https://api.telegram.org"
+    log = logger_config.get_logger(__name__)
     def __init__(self):
         self.request_session = requests.Session()
         retries = Retry(total=5,
@@ -15,14 +17,11 @@ class TgApi:
                         status_forcelist=[ 500, 502, 503, 504 ])
         self.request_session.mount(TgApi.TG_BASE_URL, HTTPAdapter(max_retries=retries))
 
-
-    def log(self, str):
-        print('{} - {}'.format(datetime.today(), str))
-
     def getTgUrl(self, methodName):
         return f'{TgApi.TG_BASE_URL}/bot{config.TG_TOKEN}/{methodName}'
 
     def sendMessage(self, msg, chatid, parse_mode=None):
+        self.log.debug(f"sending msg to {chatid} '{msg}'")
         url = self.getTgUrl('sendMessage')
         r = requests.post(url=url, data={
             'chat_id': chatid,

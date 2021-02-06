@@ -3,6 +3,7 @@ import math, time, requests, pickle, traceback
 from datetime import datetime
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
+import logger_config
 import config
 from cache import cache
 from repository.market import MarketRepository
@@ -12,14 +13,6 @@ from command_handler import CommandHandler
 from tg_api import TgApi
 
 class TgBotService(object):
-    db = {}  # this makes db static!
-
-    def __init__(self):
-        self.api = TgApi()
-        self.repository = MarketRepository()
-        self.command_handler = CommandHandler(self.api, self.repository, TgBotService.db)
-
-
     def processMessage(self, message):
         if "text" not in message:
             print(F"IGNORING [NO TEXT] {message}")
@@ -30,10 +23,8 @@ class TgBotService(object):
             print(F"IGNORING [NON-COMMAND] {message}")
 
 
-
-
     def removeAlert(self, fsym, tsym, target, chatId, op):
-        alerts = TgBotService.db['alerts']
+        alerts = self.db['alerts']
         alerts[chatId][fsym][op][tsym].remove(target)
         if len(alerts[chatId][fsym][op][tsym]) == 0:
             alerts[chatId][fsym][op].pop(tsym)
@@ -46,12 +37,13 @@ class TgBotService(object):
 
 
     def processAlerts(self):
-        if 'alerts' not in TgBotService.db:
+        if 'alerts' not in self.db:
             return
         higher = 'HIGHER'
         lower = 'LOWER'
-        alerts = TgBotService.db['alerts']
+        alerts = self.db['alerts']
         toRemove = []
+        print(alerts)
         for chatId in alerts:
             for fsym in alerts[chatId]:
                 ops = alerts[chatId][fsym]
@@ -61,6 +53,7 @@ class TgBotService(object):
                         targets = tsyms[tsym]
                         price = self.repository.get_price_if_valid(fsym, tsym)
                         for target in targets:
+                            self.log.info(f"{chatId} {fsym}{tsym} = {price} target {op} {target} ")
                             if op == lower and price < target or op == higher and price > target:
                                 self.api.sendMessage('{} is {} {} at {} {}'.format(self.repository.get_symbols()[fsym],
                                 'below' if op == lower else 'above', format_price(target), format_price(price), tsym), chatId)
@@ -75,49 +68,47 @@ class TgBotService(object):
             message = update['message'] if 'message' in update else update['edited_message']
             try:
                 self.processMessage(message)
-                self.last_update = TgBotService.db['last_update'] = update['update_id']
+                self.last_update = self.db['last_update'] = update['update_id']
             except:
-                traceback.print_exc()
+                self.log.exception(f"error processing update: {update}")
 
 
     def persist_db(self):
         with open(config.DB_FILENAME, 'wb') as fp:
-            #self.log(f"db at save: {TgBot.db}")
-            pickle.dump(TgBotService.db, fp)
-
-
-    def log(self, str):
-        print('{} - {}'.format(datetime.today(), str))
-
+            pickle.dump(self.db, fp)
 
     def run(self):
+        self.log = logger_config.get_logger(__name__)
         try:
             with open(config.DB_FILENAME, 'rb') as fp:
-                TgBotService.db = pickle.load(fp)
+                self.db = pickle.load(fp)
         except:
-            self.log("error loading db")
-            TgBotService.db = {}
-        #self.log("db at start: {}".format(TgBot.db))
-        self.last_update = TgBotService.db['last_update'] if 'last_update' in TgBotService.db else 0
+            self.log.error("error loading db, defaulting to empty db")
+            self.db = {}
+        self.api = TgApi()
+        self.repository = MarketRepository()
+        self.command_handler = CommandHandler(self.api, self.repository, self.db)
+
+        self.log.debug("db at start: {}".format(self.db))
+        self.last_update = self.db['last_update'] if 'last_update' in self.db else 0
         # main loop
         loop = True
         while loop:    
-            try:
-                #print(f"{datetime.datetime.today()} Getting updates…")
+            try:                
                 updates = self.api.getUpdates(self.last_update)       
                 if updates is None:
-                    print('update request failed \n{}'.format(updates))
+                    self.log.error('get update request failed')
                 else:
                     self.processUpdates(updates)
                 try:
                     self.processAlerts()
                 except:
-                    traceback.print_exc()
+                    self.log.exception("exception at processing alerts")
             except KeyboardInterrupt:
-                print("W: interrupt received, stopping…")
+                self.log.info("interrupt received, stopping…")
                 loop = False
             except:            
-                traceback.print_exc()      
+                self.log.exception("exception at processing updates")    
                 loop = False
 
             self.persist_db()
