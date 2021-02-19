@@ -5,16 +5,16 @@ import collections
 from os import remove,listdir
 
 
-import logger_config
 from cache import cache
 from api.binance_rest import RestApiBinance,CandleInterval
 from draw_candles import DrawChart
 from api.cryptocompare import CryptoCompare
 
 class MarketRepository(object):  
-    binance_api = RestApiBinance()
-    crypto_compare = CryptoCompare()
-    log = logger_config.get_logger(__name__)
+    def __init__(self, log):
+        self.log = log
+        self.binance_api = RestApiBinance()
+        self.crypto_compare = CryptoCompare()
 
     @cache("market.symbols", 3600)
     def get_symbols(self):

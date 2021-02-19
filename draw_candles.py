@@ -120,6 +120,10 @@ class DrawChart:
             draw.line([(x,y1), (x,y2)], color, int(math.floor(candleWidth)) - self.CANDLE_PADDING*2)
             i+=1
 
+        #TODO draw current price horizontal line
+        #TODO draw moving averages (SMA/EMA)
+        #TODO draw volume bars
+
     def save(self, output_path, candles, symbol):
         img = Image.new('RGB', (self.IMG_WIDTH,self.IMG_HEIGHT))
         draw = ImageDraw.Draw(img)

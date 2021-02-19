@@ -9,16 +9,15 @@ from repository.market import MarketRepository
 import config
 from formating import format_price
 from api.binance_rest import CandleInterval
-import logger_config
 
 
 class CommandHandler:
 
-    def __init__(self, api, repository, db):
+    def __init__(self, api, repository, db, log):
         self.repository = repository
         self.db = db
         self.api = api
-        self.log = logger_config.get_logger(__name__)
+        self.log = log
 
     def dispatch(self, message):
             text = message['text']

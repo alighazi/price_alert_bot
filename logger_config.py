@@ -26,3 +26,7 @@ def get_logger(name = ""):
     rh.setFormatter(formatter)
     logger.addHandler(rh)
     return logger
+
+global instance
+instance = get_logger(__name__)
+instance.debug("logger instance created")

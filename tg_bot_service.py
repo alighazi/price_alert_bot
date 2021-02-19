@@ -65,7 +65,14 @@ class TgBotService(object):
 
     def processUpdates(self, updates):
         for update in updates:
-            message = update['message'] if 'message' in update else update['edited_message']
+            if 'message' in update:
+                message = update['message']
+            elif "edited_message" in update['edited_message']:
+                message = update['edited_message']
+            else:
+                self.log.error(f"no message in update: {update}")
+                return
+
             try:
                 self.processMessage(message)
                 self.last_update = self.db['last_update'] = update['update_id']
@@ -78,16 +85,17 @@ class TgBotService(object):
             pickle.dump(self.db, fp)
 
     def run(self):
-        self.log = logger_config.get_logger(__name__)
+        self.log = logger_config.instance
+        cache.log = self.log
         try:
             with open(config.DB_FILENAME, 'rb') as fp:
                 self.db = pickle.load(fp)
         except:
             self.log.error("error loading db, defaulting to empty db")
             self.db = {}
-        self.api = TgApi()
-        self.repository = MarketRepository()
-        self.command_handler = CommandHandler(self.api, self.repository, self.db)
+        self.api = TgApi(self.log)
+        self.repository = MarketRepository(self.log)
+        self.command_handler = CommandHandler(self.api, self.repository, self.db, self.log)
 
         self.log.debug("db at start: {}".format(self.db))
         self.last_update = self.db['last_update'] if 'last_update' in self.db else 0

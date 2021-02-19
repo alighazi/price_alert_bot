@@ -3,14 +3,13 @@ from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
 from datetime import datetime
-import logger_config
 import config
 
 
 class TgApi:
     TG_BASE_URL = "https://api.telegram.org"
-    log = logger_config.get_logger(__name__)
-    def __init__(self):
+    def __init__(self, log):
+        self.log = log
         self.request_session = requests.Session()
         retries = Retry(total=5,
                         backoff_factor=0.1,

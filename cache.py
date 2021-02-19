@@ -8,7 +8,7 @@ class cache:
     cache = {}
     FILENAME="data/cache.pickle"
     LOADED = False
-    log = logger_config.get_logger(__name__)
+    log = logger_config.instance
     def __init__(self, key, secs, per_args = []):
         if not cache.LOADED:
             my_file = Path(cache.FILENAME)
