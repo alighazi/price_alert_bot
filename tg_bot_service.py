@@ -65,6 +65,7 @@ class TgBotService(object):
 
     def processUpdates(self, updates):
         for update in updates:
+            self.last_update = self.db['last_update'] = update['update_id']
             if 'message' in update:
                 message = update['message']
             elif "edited_message" in update['edited_message']:
@@ -74,8 +75,7 @@ class TgBotService(object):
                 return
 
             try:
-                self.processMessage(message)
-                self.last_update = self.db['last_update'] = update['update_id']
+                self.processMessage(message)                
             except:
                 self.log.exception(f"error processing update: {update}")
 
