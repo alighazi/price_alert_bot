@@ -112,6 +112,7 @@ class TgBotService(object):
                     self.processAlerts()
                 except:
                     self.log.exception("exception at processing alerts")
+                time.sleep(1)            
             except KeyboardInterrupt:
                 self.log.info("interrupt received, stopping…")
                 loop = False
@@ -121,8 +122,6 @@ class TgBotService(object):
 
             self.persist_db()
             cache.persist()
-            time.sleep(1)
-
 
 if __name__ == "__main__":
     service = TgBotService()
