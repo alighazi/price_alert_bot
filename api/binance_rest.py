@@ -5,11 +5,17 @@ from enum import Enum, unique
 from cache import cache
 from candle import Candle
 
+import logger_config
 
-class RestApiBinance:
+
+class RestApiBinance:    
     BASE_URL="https://api.binance.com/"
     PATH_CANDLESTICK_DATA = "api/v1/klines"
     PATH_EXCHANGEINFO = "api/v1/exchangeInfo"
+    PATH_PRICE = "api/v3/ticker/price"
+
+    def __init__(self):
+        self.logger = logger_config.instance
 
     def get_candles(self, symbol, interval, limit= 500):
         query_params = {}
@@ -19,7 +25,7 @@ class RestApiBinance:
         query=urllib.parse.urlencode(query_params)
 
         url = self.BASE_URL + self.PATH_CANDLESTICK_DATA
-        print("requesting: "+ url + " - "+str(query))
+        self.logger.debug("requesting: "+ url + " - "+str(query))
         r = requests.request("GET", url,params= query)
         return self.parse_candles(r.json())
 
@@ -29,20 +35,41 @@ class RestApiBinance:
             candles[c[0]] = Candle(float(c[1]), float(c[2]), float(c[3]), float(c[4]), c[0],c[6], float(c[5]))
         return candles
     
-    @cache("binance.exchangeinfo", 100000)
+    @cache("binance.exchangeinfo", 30000)
     def get_exchangeinfo(self):
         url = self.BASE_URL + self.PATH_EXCHANGEINFO
-        print("requesting: "+ url)
+        self.logger.debug("requesting: "+ url)
         r = requests.request("GET", url)
         return r.json()
 
-    @cache("binance.pairs", 100000)
+    @cache("binance.pairs", 30000)
     def get_pairs(self):
         pairs=[]
         info = self.get_exchangeinfo()
         for s in info["symbols"]:
             pairs.append((s["baseAsset"],s["quoteAsset"]))
         return pairs
+
+    @cache("binance.symbols", 30000)
+    def get_symbols(self):
+        info = self.get_exchangeinfo()
+        symbols = []
+        for s in info["symbols"]:
+            symbols.append(s["symbol"])
+        return symbols
+
+    @cache("binance.prices", 3000)
+    def get_prices(self):
+        url = self.BASE_URL + self.PATH_PRICE
+        self.logger.debug("requesting: "+ url)
+        r = requests.request("GET", url)
+        js = r.json()
+        prices = {}
+        for price in js:
+            prices[price["symbol"]] = float(price["price"])
+        return prices
+
+
             
 @unique
 class CandleInterval(Enum):

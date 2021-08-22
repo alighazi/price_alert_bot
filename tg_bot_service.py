@@ -15,12 +15,12 @@ from tg_api import TgApi
 class TgBotService(object):
     def processMessage(self, message):
         if "text" not in message:
-            print(F"IGNORING [NO TEXT] {message}")
+            self.log.debug(F"IGNORING [NO TEXT] {message}")
             return
         if('entities' in message and message['entities'][0]['type'] == 'bot_command'):
             self.command_handler.dispatch(message)
         else:
-            print(F"IGNORING [NON-COMMAND] {message}")
+            self.log.debug(F"IGNORING [NON-COMMAND] {message}")
 
 
     def removeAlert(self, fsym, tsym, target, chatId, op):
@@ -43,7 +43,6 @@ class TgBotService(object):
         lower = 'LOWER'
         alerts = self.db['alerts']
         toRemove = []
-        print(alerts)
         for chatId in alerts:
             for fsym in alerts[chatId]:
                 ops = alerts[chatId][fsym]
@@ -53,10 +52,9 @@ class TgBotService(object):
                         targets = tsyms[tsym]
                         price = self.repository.get_price_if_valid(fsym, tsym)
                         for target in targets:
-                            self.log.info(f"{chatId} {fsym}{tsym} = {price} target {op} {target} ")
+                            #self.log.info(f"{chatId} {fsym}{tsym} = {price} target {op} {target} ")
                             if op == lower and price < target or op == higher and price > target:
-                                self.api.sendMessage('{} is {} {} at {} {}'.format(self.repository.get_symbols()[fsym],
-                                'below' if op == lower else 'above', format_price(target), format_price(price), tsym), chatId)
+                                self.api.sendMessage(f"{fsym} is {'below' if op == lower else 'above'} {format_price(target)} at {format_price(price)} {tsym}", chatId)
                                 toRemove.append((fsym, tsym, target, chatId, op))
 
         for tr in toRemove:

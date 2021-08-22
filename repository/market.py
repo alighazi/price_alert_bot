@@ -8,22 +8,20 @@ from os import remove,listdir
 from cache import cache
 from api.binance_rest import RestApiBinance,CandleInterval
 from draw_candles import DrawChart
-from api.cryptocompare import CryptoCompare
 
 class MarketRepository(object):  
     def __init__(self, log):
         self.log = log
         self.binance_api = RestApiBinance()
-        self.crypto_compare = CryptoCompare()
 
     @cache("market.symbols", 3600)
     def get_symbols(self):
-        symbols = self.crypto_compare.get_symbols()
+        symbols = self.binance_api.get_symbols()
         return symbols        
 
-    TSYMS = ['BTC','USD','EUR','SEK','IRR','JPY','CNY','GBP','CAD','AUD','RUB','INR','USDT','ETH']
+    TSYMS = ['BTC','USDT','BNB', 'ETH', 'EUR']
     def isPricePairValid(self, fsym, tsym):
-        return fsym in self.get_symbols().keys() and tsym in self.TSYMS
+        return (fsym+tsym).upper() in self.get_symbols()
 
     @cache("market.top", 30)
     def get_top_coins(self):   
@@ -42,25 +40,10 @@ class MarketRepository(object):
         out = out+'`'
         return out
     
-    PARTITION_SIZE = 45
-    CACHE_DURATION_PRICE = 10.0
-    last_price_queries = {}
-    price_partitions = {}
+
     def get_price(self, fsym, tsym):
-        symbols = self.get_symbols()
-        index=list(symbols.keys()).index(fsym)
-        partition= index//MarketRepository.PARTITION_SIZE 
-
-        #print('index: {}, partition: {}, fsym: {}, tsym: {}'.format(index,partition, fsym,tsym))
-
-        if (partition not in MarketRepository.last_price_queries) or (time() - MarketRepository.last_price_queries[partition]> MarketRepository.CACHE_DURATION_PRICE):
-            index_start = max(0, partition * MarketRepository.PARTITION_SIZE - 2)
-            index_end = index_start + MarketRepository.PARTITION_SIZE
-            fsyms = list(symbols.keys())[index_start : index_end]
-            self.price_partitions[partition] = self.crypto_compare.get_price(fsyms, self.TSYMS)
-            MarketRepository.last_price_queries[partition] = time()
-        
-        return self.price_partitions[partition][fsym][tsym]
+        symbol = (fsym+tsym).upper()
+        return self.binance_api.get_prices()[symbol]
     
 
     def get_price_if_valid(self, fsym, tsym):
@@ -76,7 +59,7 @@ class MarketRepository(object):
 
         fsym = fsym.upper()
         tsym = tsym.upper()        
-        print(f"generating chart for {fsym} {tsym} ")
+        self.log.debug(f"generating chart for {fsym} {tsym} ")
 
         if tsym == "USD":
             tsym = "USDT"

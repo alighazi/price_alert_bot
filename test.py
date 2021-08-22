@@ -1,6 +1,6 @@
 import pickle, time, requests, math, json
 from datetime import datetime
-from api import cryptocompare
+from api import binance_rest
 from repository.market import MarketRepository
 
 # cc = cryptocompare.CryptoCompare()
@@ -11,16 +11,8 @@ from repository.market import MarketRepository
 # p = mr.get_price("BTC", "USD")
 # print(p)
 
-def jick():
-    print("jick jick")
 
-def woof():
-    print("woof")
+br = binance_rest.RestApiBinance()
 
-commands = {
-    "j":jick,
-    "wuf":woof
-}
-
-commands["j"]()
-commands["wuf"]()
+pairs = br.get_prices()
+print(pairs)

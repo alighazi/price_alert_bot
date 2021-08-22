@@ -50,7 +50,7 @@ class CommandHandler:
     def price(self, chatId, command):
         parts = command.split()
         if len(parts) > 3:
-            self.api.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
+            self.api.sendMessage("Invalid command, enter 2 symbols, eg: BTC USDT", chatId)
             return
 
         fsym = config.DEFAULT_COIN
@@ -66,7 +66,7 @@ class CommandHandler:
             return
 
         price = self.repository.get_price_if_valid(fsym, tsym)
-        resp = '1 {} = {} {}'.format(self.repository.get_symbols()[fsym], format_price(price),tsym)
+        resp = '1 {} = {} {}'.format(fsym, format_price(price),tsym)
         chartFile = self.repository.get_chart_near(fsym, tsym)
         if chartFile != None:
             self.api.sendPhoto(chartFile, resp, chatId)
@@ -95,7 +95,7 @@ class CommandHandler:
         if chartFile != None:
             price = self.repository.get_price_if_valid(fsym, tsym)
             if self.repository.isPricePairValid(fsym, tsym):
-                resp = '1 {} = {} {}'.format(self.repository.get_symbols()[fsym], format_price(price),tsym)
+                resp = f'{fsym} = {format_price(price)} {tsym}'
             else:
                 resp = "Enjoy the binance chart!"
             self.api.sendPhoto(chartFile, resp, chatId)
@@ -109,9 +109,6 @@ class CommandHandler:
             return
         op = parts[0]
         fsym = parts[1]
-        if not fsym in self.repository.get_symbols().keys():
-            self.api.sendMessage('Invalid symbol "{}"'.format(fsym), chatId)
-            return
         try:
             target = float(parts[2])
         except ValueError:
@@ -121,9 +118,12 @@ class CommandHandler:
         if tsym == "SAT" or tsym== "SATS":
             target=target/(100.0*1000.0*1000.0)
             tsym="BTC"
+        if tsym == "USD":
+            tsym = "USDT"
 
-        if tsym not in self.repository.TSYMS:
-            self.api.sendMessage('Invalid symbol {}'.format(tsym), chatId)
+
+        if not self.repository.isPricePairValid(fsym, tsym):
+            self.api.sendMessage(f"Invalid pair {fsym}, {tsym}", chatId)
             return
 
         if 'alerts' not in self.db:
@@ -142,8 +142,7 @@ class CommandHandler:
         else:
             alerts[fsym] = {op: {tsym: set([target])}}
         self.db['alerts'][chatId] = alerts
-        msg = 'Notification set for {} {} {} {}.'.format(
-            self.repository.get_symbols()[fsym], 'below' if op == 'LOWER' else 'above', format_price(target), tsym)
+        msg = f'Notification set for {fsym} {"below" if op == "LOWER" else "above"} {format_price(target)} {tsym}.'
         self.api.sendMessage(msg, chatId)
 
     @cache("cmd.Help", 100000)
@@ -154,7 +153,8 @@ class CommandHandler:
         self.api.sendMessage(resp, chatId, "Markdown")
 
     def getTop(self, chatId, command):
-        msg =  self.repository.get_top_coins()
+        #msg =  self.repository.get_top_coins()
+        msg = "Not available temporarily"
         self.api.sendMessage(msg, chatId, parse_mode="MarkdownV2")
     
     def alerts(self, chatId, command):
@@ -165,7 +165,7 @@ class CommandHandler:
                 for op in alerts[fsym]:
                     for tsym in alerts[fsym][op]:
                         for target in alerts[fsym][op][tsym]:
-                            msg='{}{} {} {} {}\n'.format(msg, self.repository.get_symbols()[fsym], op, target,tsym)
+                            msg=f'{msg}{fsym} {op} {target} {tsym}\n'
             self.api.sendMessage(msg, chatId)
         else:
             self.api.sendMessage('No alert is set',chatId)
