@@ -23,7 +23,7 @@ class CommandHandler:
             text = message['text']
             chatId = message['chat']['id']
             command = text.partition('/')[2]
-            self.log.info('handling command "{}"...'.format(command))
+            self.log.info(f'handling command "{command}"')
 
             if command == 'start' or command == 'help':
                 self.help(chatId, command)
@@ -147,7 +147,7 @@ class CommandHandler:
 
     @cache("cmd.Help", 100000)
     def help(self, chatId, command):
-        self.log.info("reading help file")
+        self.log.debug("reading help file")
         with open(config.HELP_FILENAME, 'rb') as fp:
             resp = fp.read()
         self.api.sendMessage(resp, chatId, "Markdown")

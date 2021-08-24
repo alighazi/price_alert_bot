@@ -1,5 +1,5 @@
 import traceback
-import math, time, requests, pickle, traceback
+import math, time, requests, pickle, traceback, sys
 from datetime import datetime
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -15,12 +15,12 @@ from tg_api import TgApi
 class TgBotService(object):
     def processMessage(self, message):
         if "text" not in message:
-            self.log.debug(F"IGNORING [NO TEXT] {message}")
+            self.log.debug("IGNORING MSG [NO TEXT]")
             return
         if('entities' in message and message['entities'][0]['type'] == 'bot_command'):
             self.command_handler.dispatch(message)
         else:
-            self.log.debug(F"IGNORING [NON-COMMAND] {message}")
+            self.log.debug("IGNORING MSG [NON-COMMAND]")
 
 
     def removeAlert(self, fsym, tsym, target, chatId, op):
@@ -52,7 +52,6 @@ class TgBotService(object):
                         targets = tsyms[tsym]
                         price = self.repository.get_price_if_valid(fsym, tsym)
                         for target in targets:
-                            #self.log.info(f"{chatId} {fsym}{tsym} = {price} target {op} {target} ")
                             if op == lower and price < target or op == higher and price > target:
                                 self.api.sendMessage(f"{fsym} is {'below' if op == lower else 'above'} {format_price(target)} at {format_price(price)} {tsym}", chatId)
                                 toRemove.append((fsym, tsym, target, chatId, op))
@@ -63,13 +62,14 @@ class TgBotService(object):
 
     def processUpdates(self, updates):
         for update in updates:
-            self.last_update = self.db['last_update'] = update['update_id']
+            self.last_update = self.db['last_update'] = update['update_id']            
+            self.log.debug(f"processing update: {update}")
             if 'message' in update:
                 message = update['message']
-            elif "edited_message" in update['edited_message']:
+            elif "edited_message" in update:
                 message = update['edited_message']
             else:
-                self.log.error(f"no message in update: {update}")
+                self.log.debug(f"no message in update: {update}")
                 return
 
             try:
@@ -82,15 +82,21 @@ class TgBotService(object):
         with open(config.DB_FILENAME, 'wb') as fp:
             pickle.dump(self.db, fp)
 
-    def run(self):
+    def run(self, debug=False):
         self.log = logger_config.instance
+        if debug:
+            self.log.setLevel(logger_config.logging.DEBUG)
+        else:
+            self.log.setLevel(logger_config.logging.INFO)
+
         cache.log = self.log
         try:
             with open(config.DB_FILENAME, 'rb') as fp:
                 self.db = pickle.load(fp)
         except:
-            self.log.error("error loading db, defaulting to empty db")
+            self.log.exception("error loading db, defaulting to empty db")
             self.db = {}
+
         self.api = TgApi(self.log)
         self.repository = MarketRepository(self.log)
         self.command_handler = CommandHandler(self.api, self.repository, self.db, self.log)
@@ -115,7 +121,7 @@ class TgBotService(object):
                 self.log.info("interrupt received, stopping…")
                 loop = False
             except:            
-                self.log.exception("exception at processing updates")    
+                self.log.exception("exception at processing updates")
                 loop = False
 
             self.persist_db()
@@ -123,4 +129,7 @@ class TgBotService(object):
 
 if __name__ == "__main__":
     service = TgBotService()
-    service.run()
+    debug= False
+    if len(sys.argv) > 1 and sys.argv[1] == "debug":
+        debug=True
+    service.run(debug)
