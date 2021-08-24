@@ -63,3 +63,6 @@ higher - get notified when price goes HIGHER than specified number
 alerts - get current alert
 clear - clear current alert
 help - get help about commands`
+
+
+for further help or discussion please use the telegram group https://t.me/alertbotgang
