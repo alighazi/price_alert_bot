@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "tg_bot_service.py", line 7, in <module>
+    import config
+  File "/home/rcl/price_alert_bot/config.py", line 4, in <module>
+    TG_TOKEN = secrets.TG_TOKEN
+AttributeError: module 'secrets' has no attribute 'TG_TOKEN'

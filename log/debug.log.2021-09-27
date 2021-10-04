@@ -1,0 +1,13 @@
+2021-09-27 18:11:56,215 logger_config ERROR: error loading db, defaulting to empty db
+Traceback (most recent call last):
+  File "tg_bot_service.py", line 94, in run
+    with open(config.DB_FILENAME, 'rb') as fp:
+FileNotFoundError: [Errno 2] No such file or directory: 'data/db.pickle'
+2021-09-27 18:12:19,553 logger_config INFO: interrupt received, stopping…
+2021-09-27 18:12:46,870 logger_config INFO: handling command "help"
+2021-09-27 18:12:48,143 logger_config WARNING: 'None' return! key: cmd.Help
+2021-09-27 18:12:56,104 logger_config INFO: handling command "price"
+2021-09-27 18:13:15,072 logger_config INFO: handling command "lower BTC 42000"
+2021-09-27 18:13:26,059 logger_config INFO: handling command "higher BTC 44000"
+2021-09-27 18:13:31,753 logger_config INFO: handling command "alerts"
+2021-09-27 19:59:21,293 logger_config INFO: handling command "alerts"
