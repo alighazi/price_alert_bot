@@ -105,7 +105,9 @@ class TgBotService(object):
         self.last_update = self.db['last_update'] if 'last_update' in self.db else 0
         # main loop
         loop = True
-        while loop:    
+        while loop:
+            # sleep for 2 seconds
+            time.sleep(2)    
             try:                
                 updates = self.api.getUpdates(self.last_update)       
                 if updates is None:
