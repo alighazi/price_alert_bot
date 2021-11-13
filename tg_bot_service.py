@@ -109,7 +109,8 @@ class TgBotService(object):
             # sleep for 2 seconds
             time.sleep(2)    
             try:                
-                updates = self.api.getUpdates(self.last_update)       
+                updates = self.api.getUpdates(self.last_update)   
+ 
                 if updates is None:
                     self.log.error('get update request failed')
                 else:
@@ -122,6 +123,9 @@ class TgBotService(object):
             except KeyboardInterrupt:
                 self.log.info("interrupt received, stopping…")
                 loop = False
+            except requests.exceptions.ConnectionError as e:
+                # A serious problem happened, like DNS failure, refused connection, etc.
+                updates = None   
             except:            
                 self.log.exception("exception at processing updates")
                 loop = False
