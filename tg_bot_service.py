@@ -106,8 +106,8 @@ class TgBotService(object):
         # main loop
         loop = True
         while loop:
-            # delay for 30 seconds
-            time.sleep(30)
+            # delay for 2 seconds
+            time.sleep(2)
 
 
             try:                
