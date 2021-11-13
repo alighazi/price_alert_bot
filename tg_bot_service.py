@@ -106,8 +106,10 @@ class TgBotService(object):
         # main loop
         loop = True
         while loop:
-            # sleep for 2 seconds
-            time.sleep(2)    
+            # delay for 30 seconds
+            time.sleep(30)
+
+
             try:                
                 updates = self.api.getUpdates(self.last_update)   
  
