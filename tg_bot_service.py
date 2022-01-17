@@ -45,11 +45,11 @@ class TgBotService(object):
         toRemove = []
         for chatId in alerts:
             for fsym in alerts[chatId]:
-                self.log.info("ath for {} is {}".format(fsym, self.repository.get_ath(fsym)[0]))
                 ops = alerts[chatId][fsym]
                 for op in ops:
                     tsyms = ops[op]
                     for tsym in tsyms:
+                        # self.log.info("ath for {} is {}".format(fsym, self.repository.get_ath(fsym, tsym)[0]))
                         targets = tsyms[tsym]
                         price = self.repository.get_price_if_valid(fsym, tsym)
                         for target in targets:
@@ -60,6 +60,8 @@ class TgBotService(object):
         for tr in toRemove:
             self.removeAlert(tr[0], tr[1], tr[2], tr[3], tr[4])
 
+    def processWatches(self):
+        return "none"
 
     def processUpdates(self, updates):
         for update in updates:
@@ -122,6 +124,10 @@ class TgBotService(object):
                     self.processAlerts()
                 except:
                     self.log.exception("exception at processing alerts")
+                try:
+                    self.processWatches()
+                except:
+                    self.log.exception("exception at processing watches")
                 time.sleep(1)            
             except KeyboardInterrupt:
                 self.log.info("interrupt received, stopping…")
@@ -138,7 +144,7 @@ class TgBotService(object):
 
 if __name__ == "__main__":
     service = TgBotService()
-    debug= True
+    debug= False
     if len(sys.argv) > 1 and sys.argv[1] == "debug":
         debug=True
     service.run(debug)

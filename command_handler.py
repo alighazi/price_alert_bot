@@ -49,6 +49,8 @@ class CommandHandler:
                 self.dropby(chatId, command)
             elif command.startswith('ath'):
                 self.ath(chatId, command)
+            elif command.startswith('watch'):
+                self.watch(chatId, command)
             else:
                 self.api.sendMessage('Unknown command', chatId)
 
@@ -56,6 +58,96 @@ class CommandHandler:
         if 'alerts' in self.db and chatId in self.db['alerts']:
             self.db['alerts'].pop(chatId)
         self.api.sendMessage('Done.',chatId)
+
+    def watch(self, chatId, command):
+        # command structured
+        # /watch btc drop 50% 14 days
+        # /watch btc spike 50% 1 month
+        # /watch btc drop 5000 2 days
+        # /watch btc drop 5000 2 days from ath
+
+        parts = command.split()
+        if not (len(parts) in [6,8]):
+            self.api.sendMessage("Invalid command, see help", chatId)
+            return
+
+        fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+
+        op = parts[2].lower()
+        if op not in ['drop','spike']:
+            self.api.sendMessage("Invalid command, must be drop or spike", chatId)
+            return
+
+        target = parts[3]
+
+        # remove % if there is one in target
+        if target.endswith('%'):
+            target = target[:-1]
+        
+        # check if target is a number
+        try:
+            target = float(target)
+        except:
+            self.api.sendMessage("Invalid command, must be a number", chatId)
+            return
+        
+        # this line never executes if there was something wrong with the target
+        target = parts[3]
+
+        # if there is a 4th part, it is the time period
+        if len(parts) > 4:
+            duration = parts[4]
+        
+        # if duration is not a number then something is wrong, return error
+        try:
+            duration = int(duration)
+        except:
+            self.api.sendMessage("Invalid command, must be a number", chatId)
+            return
+
+        # if there is a 5th part, it is the duration type
+        if len(parts) > 5:
+            duration_type = parts[5]
+        else:
+            duration_type = 'days'
+
+        # if there is a sixth part it must be "from ath", else error
+        if len(parts) > 6:
+            if parts[6] != 'from':
+                self.api.sendMessage("Invalid command, must be from ath", chatId)
+                return
+            else:
+                from_ath = True
+        else:
+            from_ath = False
+            
+        # create an watch dictionar
+        watch = {}
+        watch['chatId'] = chatId
+        watch['fsym'] = fsym
+        watch['tsym'] = tsym
+        watch['op'] = op
+        watch['target'] = target
+        watch['duration'] = duration
+        watch['duration_type'] = duration_type
+        watch['from_ath'] = from_ath
+
+        if 'watchs' not in self.db:
+            self.db['watchs'] = []
+        self.db['watchs'].append( watch) 
+        self.api.sendMessage("Watch added", chatId)
+        return
+
+
+
+        if not self.repository.isPricePairValid(fsym, tsym):
+            self.api.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
+            return
+
+        resp = 'Watching {} {} {}'.format(fsym, op, parts[3])
+        self.api.sendMessage(resp, chatId)
 
     def ath(self, chatId, command):
         parts = command.split()
@@ -139,7 +231,7 @@ class CommandHandler:
 
     def dropby(self, chatId, command):
         parts = command.split()
-        if len(parts) > 5:
+        if len(parts) != 5:
             self.api.sendMessage("Invalid comman: /dropby BTC 50% <n> [days|weeks|months|years]", chatId)
             return
 
