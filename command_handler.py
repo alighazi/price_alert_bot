@@ -45,6 +45,8 @@ class CommandHandler:
                 self.yesterday(chatId, command)
             elif command.startswith('history'):
                 self.history(chatId, command)
+            elif command.startswith('dropby'):
+                self.dropby(chatId, command)
             else:
                 self.api.sendMessage('Unknown command', chatId)
 
@@ -104,6 +106,95 @@ class CommandHandler:
 
         self.api.sendMessage(resp, chatId)
 
+
+    def dropby(self, chatId, command):
+        parts = command.split()
+        if len(parts) > 5:
+            self.api.sendMessage("Invalid comman: /dropby BTC 50% <n> [days|weeks|months|years]", chatId)
+            return
+
+        fsym = config.DEFAULT_COIN
+        if len(parts) > 1:
+            fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+
+        # dropbythreshold from parts[2]
+        dropbythreshold = parts[2]
+
+        # if dropbythreshold has a % sign then remove it
+        if dropbythreshold.endswith('%'):
+            dropbythreshold = dropbythreshold[:-1]
+
+        # if dropbythreshold is not a number then return
+        if not dropbythreshold.isdigit():
+            self.api.sendMessage("Invalid dropby threshold", chatId)
+            return
+
+        # get the current price
+        price = self.repository.get_price_if_valid(fsym, tsym)
+
+        # get the historical price
+        
+        # default duration is 1 day
+        duration = 1
+
+        if len(parts) > 3:
+            # convert parts[2].upper() from string to integer
+            try:
+                duration = int(parts[3])
+            except ValueError:
+                self.api.sendMessage("Invalid command", chatId)
+                return
+
+
+        if len(parts) > 4:
+            # get the duration unit from parts[3]
+            duration_unit = parts[4].lower()
+
+            # if the duration is weeks or months then muliplay the duration by 7 or 30 respectively
+            # if first 3 letters of duration_unit are 'day' then duration is in days
+            # if first 3 letters of duration_unit are 'wee' then duration is in weeks
+            # if first 3 letters of duration_unit are 'mon' then duration is in months
+            if duration_unit[:3] == 'day':
+                duration = duration
+            elif duration_unit[:4] == 'week':
+                duration = duration * 7     
+            elif duration_unit[:5] == 'month':
+                duration = duration * 30
+            elif duration_unit[:4] == 'year':
+                duration = duration * 365
+            else:
+                self.api.sendMessage("Invalid command ", chatId)
+                return
+
+        # if the duration is less then one then sendmessage error
+        if duration < 1:
+            self.api.sendMessage("Invalid duration", chatId)
+            return
+    
+        tsym = config.DEFAULT_FIAT
+
+
+
+        # set hdate variable to historical date  
+        hdate = datetime.now() - timedelta(days=duration)
+
+        # get the price for that date                
+        historicalprice = self.repository.get_day_price(fsym, tsym, hdate)
+
+        pricedifference = historicalprice - price
+
+        # difference as a percentage
+        pricedifferencepercentage = (pricedifference / historicalprice) * 100
+
+        # if the difference is less than the dropbythreshold then sendmessage
+        if pricedifferencepercentage < float(dropbythreshold):
+            resp = 'LESS drop: price dropped by {:.1f} percent, changed {} to {}'.format(pricedifferencepercentage, format_price(historicalprice), format_price(price))
+        else:
+            resp = 'MORE drop: price dropped by {:.1f} percent, changed {} to {}'.format(pricedifferencepercentage, format_price(historicalprice), format_price(price))
+    
+        self.api.sendMessage(resp, chatId)
 
     def history(self, chatId, command):
         parts = command.split()
