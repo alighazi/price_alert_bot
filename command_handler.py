@@ -78,7 +78,7 @@ class CommandHandler:
 
         ath, athdate = self.repository.get_ath(fsym, tsym)
         
-        resp = 'ATH for {} was {} {} on {}'.format(fsym, format_price(ath),tsym, athdate)
+        resp = 'ATH for {} was {} {} on {}'.format(fsym, format_price(ath),tsym,datetime.fromtimestamp( athdate /1000 ).strftime("%Y/%m/%d")  )
         
         self.api.sendMessage(resp, chatId)
 
