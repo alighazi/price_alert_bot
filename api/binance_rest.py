@@ -18,10 +18,10 @@ class RestApiBinance:
         self.logger = logger_config.instance
 
     # function to get the ath price from binance of a coin
-    def get_ath(self, symbol):
+    def get_ath(self, fsym, tsym):
         #set up the query params
         query_params = {}
-        query_params["symbol"] = symbol
+        query_params["symbol"] = fsym+tsym  
         query_params["interval"] = "1M" # 1M = 1 month
         query_params["limit"] = 500 # is the max periods of time that can be requested
         query_params["startTime"] = 1633068154000 # 1 Oct 2021

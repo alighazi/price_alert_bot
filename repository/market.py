@@ -23,11 +23,11 @@ class MarketRepository(object):
         symbols = self.binance_api.get_symbols()
         return symbols        
 
-    @cache("market.ath", 86400, [1]) # 1 day is 86400 seconds, cache vary by symbol
-    def get_ath(self, symbol):
+    @cache("market.ath", 86400, [1,2]) # 1 day is 86400 seconds, cache vary by symbol
+    def get_ath(self, fsym, tsym):
         tsym = "USDT"  
                 
-        return self.binance_api.get_ath(symbol+tsym)
+        return self.binance_api.get_ath(fsym, tsym)
 
 
 

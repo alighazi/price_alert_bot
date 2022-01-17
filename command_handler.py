@@ -103,7 +103,7 @@ class CommandHandler:
             return
 
         price = self.repository.get_price_if_valid(fsym, tsym)
-        ath = self.repository.get_ath(fsym, tsym)[0]
+        ath, athdate = self.repository.get_ath(fsym,tsym)
         resp = '1 {} = {} {} compared to ATH of {}'.format(fsym, format_price(price),tsym, format_price(ath))
         chartFile = self.repository.get_chart_near(fsym, tsym)
         if chartFile != None:
