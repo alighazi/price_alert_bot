@@ -51,6 +51,8 @@ class CommandHandler:
                 self.ath(chatId, command)
             elif command.startswith('watch'):
                 self.watch(chatId, command)
+            elif command.startswith('showwatches'):
+                self.showwatches(chatId, command)
             else:
                 self.api.sendMessage('Unknown command', chatId)
 
@@ -58,6 +60,17 @@ class CommandHandler:
         if 'alerts' in self.db and chatId in self.db['alerts']:
             self.db['alerts'].pop(chatId)
         self.api.sendMessage('Done.',chatId)
+
+    def showwatches(self, chatId, command):
+        if 'watchs' not in self.db:
+            self.api.sendMessage("No watchs", chatId)
+            return
+
+        msg = ''
+        for watch in self.db['watchs']:
+            if watch['chatId'] == chatId:
+                msg += '{} {} {} {} {} {}\n'.format(watch['fsym'], watch['op'], watch['target'], watch['duration'], watch['duration_type'], watch['from_ath'])
+        self.api.sendMessage(msg, chatId)
 
     def watch(self, chatId, command):
         # command structured
