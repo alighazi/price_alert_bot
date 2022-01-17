@@ -14,6 +14,10 @@ class MarketRepository(object):
         self.log = log
         self.binance_api = RestApiBinance()
 
+    def get_day_price(self, fsym, tsym, queryday):
+        dayprice = self.binance_api.get_price_on_date(fsym+tsym, queryday)
+        return dayprice
+
     @cache("market.symbols", 3600)
     def get_symbols(self):
         symbols = self.binance_api.get_symbols()

@@ -119,3 +119,4 @@ secrets.py
 charts/*.png
 
 log/*.log
+.vscode/launch.json

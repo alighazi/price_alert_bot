@@ -17,6 +17,30 @@ class RestApiBinance:
     def __init__(self):
         self.logger = logger_config.instance
 
+    # function to get the bitcoin price from binance on a date
+    def get_price_on_date(self, symbol, dateofprice):
+        # convert dateofprice to linux epoch milliseconds
+        dateofprice_epoch = int(dateofprice.timestamp() * 1000)
+
+        #set up the query params
+        query_params = {}
+        query_params["symbol"] = symbol
+        query_params["interval"] = "1d"
+        query_params["limit"] = 1
+        query_params["startTime"] = dateofprice_epoch
+        query=urllib.parse.urlencode(query_params)
+
+        url = self.BASE_URL + self.PATH_CANDLESTICK_DATA
+        self.logger.debug("requesting: "+ url + " - "+str(query))
+        r = requests.request("GET", url,params= query)
+
+        # parse the json response
+        # get the open price from the second value of the first item in the json response
+        print('about to fail')
+        return float(r.json()[0][1])
+
+
+
     def get_candles(self, symbol, interval, limit= 500):
         query_params = {}
         query_params["symbol"] = symbol

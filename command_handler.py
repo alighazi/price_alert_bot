@@ -1,5 +1,6 @@
 import math, time, requests, pickle, traceback
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -9,6 +10,7 @@ from repository.market import MarketRepository
 import config
 from formating import format_price
 from api.binance_rest import CandleInterval
+
 
 
 class CommandHandler:
@@ -39,6 +41,8 @@ class CommandHandler:
                 self.chart(chatId, command)
             elif command.startswith('lower') or command.startswith('higher'):
                 self.higher_lower(chatId, command)
+            elif command.startswith('yesterday'):
+                self.yesterday(chatId, command)
             else:
                 self.api.sendMessage('Unknown command', chatId)
 
@@ -72,6 +76,32 @@ class CommandHandler:
             self.api.sendPhoto(chartFile, resp, chatId)
         else:
             self.api.sendMessage(resp, chatId)
+
+    def yesterday(self, chatId, command):
+        parts = command.split()
+        if len(parts) > 4:
+            self.api.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
+            return
+
+        fsym = config.DEFAULT_COIN
+        if len(parts) > 1:
+            fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+
+        # set ydate variable to yesterdays date  
+        ydate = datetime.now() - timedelta(days=1)
+
+        # get the price for that date                
+        returnedprice = self.repository.get_day_price(fsym, tsym, ydate)
+
+        print(returnedprice)
+        print(type(returnedprice))
+        print('.')
+        resp = ' price yesterday was {}'.format(format_price(returnedprice))
+
+        self.api.sendMessage(resp, chatId)
+
 
     def chart(self, chatId, command):
         parts = command.split()
