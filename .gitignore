@@ -3,6 +3,10 @@ share/
 nohup.out*
 log/
 bin/
+easy_*
+pip*
+python*
+
 
 
 # Byte-compiled / optimized / DLL files
