@@ -17,6 +17,38 @@ class RestApiBinance:
     def __init__(self):
         self.logger = logger_config.instance
 
+    # function to get the ath price from binance of a coin
+    def get_ath(self, symbol):
+        #set up the query params
+        query_params = {}
+        query_params["symbol"] = symbol
+        query_params["interval"] = "1M" # 1M = 1 month
+        query_params["limit"] = 500 # is the max periods of time that can be requested
+        query_params["startTime"] = 1633068154000 # 1 Oct 2021
+
+        query=urllib.parse.urlencode(query_params)
+
+        url = self.BASE_URL + self.PATH_CANDLESTICK_DATA
+        self.logger.debug("requesting: "+ url + " - "+str(query))
+        r = requests.request("GET", url,params= query)
+
+        # loop through responses and find the highest value to return
+        highest_value = 0.0
+        highest_datetimemilliseconds = 0
+        for c in r.json():
+            print(float(c[2]) )
+            if float(c[2]) > highest_value:
+                highest_value = float(c[2])
+                highest_datetimemilliseconds = int(c[0])
+
+        return highest_value, highest_datetimemilliseconds
+
+
+
+
+
+
+
     # function to get the bitcoin price from binance on a date
     def get_price_on_date(self, symbol, dateofprice):
         # convert dateofprice to linux epoch milliseconds

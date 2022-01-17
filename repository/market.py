@@ -23,6 +23,14 @@ class MarketRepository(object):
         symbols = self.binance_api.get_symbols()
         return symbols        
 
+    @cache("market.ath", 86400, [1]) # 1 day is 86400 seconds, cache vary by symbol
+    def get_ath(self, symbol):
+        tsym = "USDT"  
+                
+        return self.binance_api.get_ath(symbol+tsym)
+
+
+
     TSYMS = ['BTC','USDT','BNB', 'ETH', 'EUR']
     def isPricePairValid(self, fsym, tsym):
         return (fsym+tsym).upper() in self.get_symbols()

@@ -45,6 +45,7 @@ class TgBotService(object):
         toRemove = []
         for chatId in alerts:
             for fsym in alerts[chatId]:
+                self.log.info("ath for {} is {}".format(fsym, self.repository.get_ath(fsym)[0]))
                 ops = alerts[chatId][fsym]
                 for op in ops:
                     tsyms = ops[op]
@@ -137,7 +138,7 @@ class TgBotService(object):
 
 if __name__ == "__main__":
     service = TgBotService()
-    debug= False
+    debug= True
     if len(sys.argv) > 1 and sys.argv[1] == "debug":
         debug=True
     service.run(debug)
