@@ -124,3 +124,10 @@ charts/*.png
 
 log/*.log
 .vscode/launch.json
+bin/easy_install
+bin/easy_install-3.6
+bin/pip
+bin/pip3
+bin/pip3.6
+bin/python
+bin/python3
