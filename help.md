@@ -43,6 +43,17 @@ Example:s
 **/alerts**  
 Get the current alerts.
 
+**/yesterday**
+Price of BTC yesterday
+
+**/history**
+Price of a coin in the past:
+
+Example:s
+`/history BTC 3 days` (what was the price of Bitcoin 3 days ago in USD)
+`/history BTC 2 weeks`
+`/history BTC 2 months`
+
 **/clear**  
 Clear current alerts.
 

@@ -43,6 +43,8 @@ class CommandHandler:
                 self.higher_lower(chatId, command)
             elif command.startswith('yesterday'):
                 self.yesterday(chatId, command)
+            elif command.startswith('history'):
+                self.history(chatId, command)
             else:
                 self.api.sendMessage('Unknown command', chatId)
 
@@ -99,6 +101,77 @@ class CommandHandler:
         print(type(returnedprice))
         print('.')
         resp = ' price yesterday was {}'.format(format_price(returnedprice))
+
+        self.api.sendMessage(resp, chatId)
+
+
+    def history(self, chatId, command):
+        parts = command.split()
+        if len(parts) > 4:
+            self.api.sendMessage("Invalid command, enter /history BTC 5 days", chatId)
+            return
+
+        fsym = config.DEFAULT_COIN
+        if len(parts) > 1:
+            fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+        
+        # default duration is 1 day
+        duration = 1
+
+        if len(parts) > 2:
+            # convert parts[2].upper() from string to integer
+            try:
+                duration = int(parts[2])
+            except ValueError:
+                self.api.sendMessage("Invalid command, enter /history BTC 5 days", chatId)
+                return
+
+
+        if len(parts) > 3:
+            # get the duration unit from parts[3]
+            duration_unit = parts[3].lower()
+
+            # if the duration is weeks or months then muliplay the duration by 7 or 30 respectively
+            # if first 3 letters of duration_unit are 'day' then duration is in days
+            # if first 3 letters of duration_unit are 'wee' then duration is in weeks
+            # if first 3 letters of duration_unit are 'mon' then duration is in months
+            if duration_unit[:3] == 'day':
+                duration = duration
+            elif duration_unit[:4] == 'week':
+                duration = duration * 7     
+            elif duration_unit[:5] == 'month':
+                duration = duration * 30
+            elif duration_unit[:4] == 'year':
+                duration = duration * 365
+            else:
+                self.api.sendMessage("Invalid command, enter /history BTC <n> [days|weeks|months|years]", chatId)
+                return
+
+        # if the duration is less then one then sendmessage error
+        if duration < 1:
+            self.api.sendMessage("Invalid duration", chatId)
+            return
+    
+        tsym = config.DEFAULT_FIAT
+
+
+
+        # set hdate variable to historical date  
+        hdate = datetime.now() - timedelta(days=duration)
+
+        # get the price for that date                
+        returnedprice = self.repository.get_day_price(fsym, tsym, hdate)
+
+        print(returnedprice)
+        print(type(returnedprice))
+        print('.')
+
+        # set printablehdate to hdate formatted as long date
+        printablehdate = hdate.strftime('%B %d, %Y')
+
+        resp = ' price {} days ago on {} was {}'.format(duration, printablehdate ,format_price(returnedprice))
 
         self.api.sendMessage(resp, chatId)
 
