@@ -74,7 +74,8 @@ class CommandHandler:
             return
 
         price = self.repository.get_price_if_valid(fsym, tsym)
-        resp = '1 {} = {} {}'.format(fsym, format_price(price),tsym)
+        ath = self.repository.get_ath(fsym, tsym)[0]
+        resp = '1 {} = {} {} compared to ATH of {}'.format(fsym, format_price(price),tsym, format_price(ath))
         chartFile = self.repository.get_chart_near(fsym, tsym)
         if chartFile != None:
             self.api.sendPhoto(chartFile, resp, chatId)
@@ -339,7 +340,7 @@ class CommandHandler:
         msg = f'Notification set for {fsym} {"below" if op == "LOWER" else "above"} {format_price(target)} {tsym}.'
         self.api.sendMessage(msg, chatId)
 
-    @cache("cmd.Help", 100000)
+    @cache("cmd.Help", 10)
     def help(self, chatId, command):
         self.log.debug("reading help file")
         with open(config.HELP_FILENAME, 'rb') as fp:
