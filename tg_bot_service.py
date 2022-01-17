@@ -106,8 +106,10 @@ class TgBotService(object):
         # main loop
         loop = True
         while loop:
-            # delay for 30 seconds
-            time.sleep(30)
+            # delay for 2 seconds - maximum deplay in processing commands
+            # unlikely to hit server limit as everything is cached using the 
+            # cache module and cache file is persisted to disk
+            time.sleep(2)
 
 
             try:                
