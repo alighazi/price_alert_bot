@@ -46,6 +46,17 @@ Get the current alerts.
 **/clear**  
 Clear current alerts.
 
+**/dropby**
+Check if a coin has dropped by a percentage
+
+`/dropby BTC 50% 1 month` (Has BTC dropped by 50% in the last 1 month)
+
+**/ath**
+What is the ATH of a coin (only checks back to Oct 2021)
+
+`/ath BTC`
+
+
 **/help**  
 See this message.
 
