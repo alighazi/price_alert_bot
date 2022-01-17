@@ -47,6 +47,8 @@ class CommandHandler:
                 self.history(chatId, command)
             elif command.startswith('dropby'):
                 self.dropby(chatId, command)
+            elif command.startswith('ath'):
+                self.ath(chatId, command)
             else:
                 self.api.sendMessage('Unknown command', chatId)
 
@@ -54,6 +56,33 @@ class CommandHandler:
         if 'alerts' in self.db and chatId in self.db['alerts']:
             self.db['alerts'].pop(chatId)
         self.api.sendMessage('Done.',chatId)
+
+    def ath(self, chatId, command):
+        parts = command.split()
+        if len(parts) > 3:
+            self.api.sendMessage("Invalid command, enter 2 symbols, eg: BTC USDT", chatId)
+            return
+
+        fsym = config.DEFAULT_COIN
+        if len(parts) >1:
+            fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+        if len(parts) > 2:
+            tsym = parts[2].upper()
+
+
+        if not self.repository.isPricePairValid(fsym, tsym):
+            self.api.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
+            return
+
+        ath, athdate = self.repository.get_ath(fsym, tsym)
+        
+        resp = 'ATH for {} was {} {} on {}'.format(fsym, format_price(ath),tsym, athdate)
+        
+        self.api.sendMessage(resp, chatId)
+
+             
 
     def price(self, chatId, command):
         parts = command.split()
