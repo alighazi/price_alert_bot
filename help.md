@@ -55,7 +55,7 @@ Example:s
 `/history BTC 2 months`
 
 **/watch**
-Ccommand structured
+Command structured
 `/watch btc drop 50% 14 days` (Percentage drop)
 `/watch btc rise 50% 1 month`
 `/watch btc drop 5000 2 days` (absolute value drop)
