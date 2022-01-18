@@ -34,11 +34,14 @@ class cache:
                     raise IndexError(f"the {arg_pos}th argument not found in the invocation of the method: {fn}. make sure you are calling the method with the right number of the arguments")
                 key +="|"+ str(args[arg_pos])
             if key in cache.cache:
+                self.log.debug(f"cache hit key: {key}")
                 entry = cache.cache[key]
                 if entry[0] + self.__secs >= time():
                     return entry[1]
                 else:
                     self.log.debug(f"cache expired for key: {key}")
+            else:
+                self.log.debug(f"cache miss for key: {key}")
             
             returnValue = fn(*args, **kwargs)
             if returnValue== None:
@@ -50,6 +53,7 @@ class cache:
     
     @staticmethod
     def persist():
+        cache.log.debug('persisting cache')
         with open(cache.FILENAME, 'wb') as fp:
             pickle.dump(cache.cache, fp)
 
