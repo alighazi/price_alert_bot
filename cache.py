@@ -50,6 +50,7 @@ class cache:
     
     @staticmethod
     def persist():
+        cache.log.debug('persisting cache')
         with open(cache.FILENAME, 'wb') as fp:
             pickle.dump(cache.cache, fp)
 

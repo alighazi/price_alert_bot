@@ -39,6 +39,7 @@ class TgBotService(object):
     def processAlerts(self):
         if 'alerts' not in self.db:
             return
+        self.log.debug('processing alerts')
         higher = 'HIGHER'
         lower = 'LOWER'
         alerts = self.db['alerts']
@@ -61,12 +62,16 @@ class TgBotService(object):
             self.removeAlert(tr[0], tr[1], tr[2], tr[3], tr[4])
 
     def processWatches(self):
+        self.log.debug('processing watches')
         if 'watches' not in self.db:
             return  
-        for watch in self.db['watches']:
+        # self.log.debug(f'processing { len(self.db['watches']) } watches')
+        i = 0
+        while i < len (self.db['watches']):
+            watch = self.db['watches'][i]
             # if watch is ath true then get the ath and athdate
-            if watch['ath']:
-                comparitorprice, comparitordate = self.repository.get_ath(watch['fsym'], watch['tsym'])[1] 
+            if watch['from_ath']:
+                comparitorprice, comparitordate = self.repository.get_ath(watch['fsym'], watch['tsym']) 
             else:
                 # caluclate periodindays from duration and duration_type
                 duration = watch['duration'] 
@@ -82,6 +87,9 @@ class TgBotService(object):
                 # at this point we have durationindays and can work backwards from now to find the comparitor date
                 comparitordate = datetime.now() - timedelta(days=durationindays)
 
+                # date rounding to nearest day for comparitor date
+                comparitordate = comparitordate.replace(hour=0, minute=0, second=0, microsecond=0)
+
                 # get the price for that symbol pair on that date
                 comparitorprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], comparitordate)
 
@@ -92,21 +100,34 @@ class TgBotService(object):
             currentprice = self.repository.get_price_if_valid(watch['fsym'], watch['tsym'])
 
 
+
            # convert percentage values to absolute
             # if target contains a percentage then convert to absolute
             if '%' in watch['target']:
                 targetpercentage = float(watch['target'].replace('%', ''))
                 target = comparitorprice * (targetpercentage / 100)
             else:
-                target = watch['target']
+                target = int(watch['target'])
 
            # do the comparison
             if watch['op'] == 'drop':
-               if currentprice < target:
-                   self.api.sendMessage(f"Drop watch: {watch['fsym']} is lower than {format_price(target)} at {format_price(comparitorprice)} {watch['tsym']}", chatId=watch['chatId'])
+               if currentprice < comparitorprice - target:
+                   self.api.sendMessage(f"Drop watch: {watch['fsym']} is {watch['target']} lower than {format_price(comparitorprice)} at {currentprice} {watch['tsym']}", watch['chatId'])
+                   self.log.debug("removing completed drop watch")
+                   del self.db['watches'][i]
+               else:
+                   i += 1
             elif watch['op'] == 'rise':
-                    if currentprice > target:
-                        self.api.sendMessage(f"rise watch: {watch['fsym']} is higher than {format_price(target)} at {format_price(comparitorprice)} {watch['tsym']}", chatId=watch['chatId'])
+                    if currentprice >  comparitorprice + target:
+                        self.api.sendMessage(f"rise watch: {watch['fsym']} is higher than {format_price(target)} at {format_price(comparitorprice)} {watch['tsym']}", watch['chatId'])
+                        self.log.debug("removing completed rise watch")
+                        del self.db['watches'][i]
+                    else:
+                        i += 1
+            else: # this item is invalid, delete it
+                self.log.error(f"invalid watch op: {watch['op']}")
+                del self.db['watches'][i]
+
 
 
             
@@ -131,6 +152,7 @@ class TgBotService(object):
 
 
     def persist_db(self):
+        self.log.debug('persisting db')
         with open(config.DB_FILENAME, 'wb') as fp:
             pickle.dump(self.db, fp)
 

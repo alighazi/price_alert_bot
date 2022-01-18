@@ -65,23 +65,23 @@ class CommandHandler:
 
 
     def clearwatches(self, chatId, command):
-        if 'watchs' not in self.db:
-            self.api.sendMessage("No watchs", chatId)
+        if 'watches' not in self.db:
+            self.api.sendMessage("No watches", chatId)
             return
 
-        for watch in self.db['watchs']:
+        for watch in self.db['watches']:
             if watch['chatId'] == chatId:
-                self.db['watchs'].remove(watch)
+                self.db['watches'].remove(watch)
 
         self.api.sendMessage("Done.", chatId)
 
     def showwatches(self, chatId, command):
-        if 'watchs' not in self.db:
-            self.api.sendMessage("No watchs", chatId)
+        if 'watches' not in self.db or len(self.db['watches']) == 0:
+            self.api.sendMessage("No watches", chatId)
             return
 
         msg = ''
-        for watch in self.db['watchs']:
+        for watch in self.db['watches']:
             if watch['chatId'] == chatId:
                 msg += '{} {} {} {} {}\n'.format(watch['fsym'], watch['op'], watch['target'], watch['duration'], watch['duration_type'])
         self.api.sendMessage(msg, chatId)
@@ -130,6 +130,10 @@ class CommandHandler:
         if duration.lower() == 'from':
             if parts[5].lower() == 'ath':
                 from_ath = True
+                # rise from ath makes no sense and should error
+                if op == 'rise':
+                    self.api.sendMessage("Invalid command, rise from ath makes no sense", chatId)
+                    return
             else:
                 self.api.sendMessage("Invalid command, must be from ath", chatId)
                 return
@@ -159,9 +163,9 @@ class CommandHandler:
         watch['duration_type'] = duration_type
         watch['from_ath'] = from_ath
 
-        if 'watchs' not in self.db:
-            self.db['watchs'] = []
-        self.db['watchs'].append( watch) 
+        if 'watches' not in self.db:
+            self.db['watches'] = []
+        self.db['watches'].append( watch) 
         self.api.sendMessage("Watch added", chatId)
         return
 

@@ -14,8 +14,12 @@ class MarketRepository(object):
         self.log = log
         self.binance_api = RestApiBinance()
 
+    @cache("market.getdayprice", 3600, [1,2,3])
     def get_day_price(self, fsym, tsym, queryday):
-        """ queryday is a datetime object """
+        """ queryday is a datetime object, price is at 00:00:00, HIGH price for that day """
+
+        # round queryday to midnight on that day
+        queryday = datetime(queryday.year, queryday.month, queryday.day)
         dayprice = self.binance_api.get_price_on_date(fsym+tsym, queryday)
         return dayprice
 
