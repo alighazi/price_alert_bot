@@ -94,7 +94,7 @@ class TgBotService(object):
                 comparitorprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], comparitordate)
 
             # log info the comparitor price and date
-            self.log.info(f"comparitor price: {comparitorprice} on {comparitordate}")
+            self.log.debug(f"comparitor price: {comparitorprice} on {comparitordate}")
 
             # get the current price
             currentprice = self.repository.get_price_if_valid(watch['fsym'], watch['tsym'])
