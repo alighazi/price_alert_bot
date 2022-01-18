@@ -18,6 +18,7 @@ class RestApiBinance:
         self.logger = logger_config.instance
 
     # function to get the ath price from binance of a coin
+    @cache("binance.getath", 86400, [1,2])
     def get_ath(self, fsym, tsym):
         #set up the query params
         query_params = {}
@@ -50,6 +51,7 @@ class RestApiBinance:
 
 
     # function to get the bitcoin price from binance on a date
+    @cache("binance.getpriceondate", 86400, [1,2])    
     def get_price_on_date(self, symbol, dateofprice):
         """ Returns the high price of the 24 hour period starting with dateofprice """
         # convert dateofprice to linux epoch milliseconds
@@ -93,7 +95,7 @@ class RestApiBinance:
         return float(r.json()[0][2])
 
 
-
+    @cache("binance.getcandles", 420, [1,2,3])
     def get_candles(self, symbol, interval, limit= 500):
         query_params = {}
         query_params["symbol"] = symbol
@@ -112,14 +114,14 @@ class RestApiBinance:
             candles[c[0]] = Candle(float(c[1]), float(c[2]), float(c[3]), float(c[4]), c[0],c[6], float(c[5]))
         return candles
     
-    @cache("binance.exchangeinfo", 30000)
+    @cache("binance.exchangeinfo", 86400)
     def get_exchangeinfo(self):
         url = self.BASE_URL + self.PATH_EXCHANGEINFO
         self.logger.debug("requesting: "+ url)
         r = requests.request("GET", url)
         return r.json()
 
-    @cache("binance.pairs", 30000)
+    @cache("binance.pairs", 86400)
     def get_pairs(self):
         pairs=[]
         info = self.get_exchangeinfo()
@@ -127,7 +129,7 @@ class RestApiBinance:
             pairs.append((s["baseAsset"],s["quoteAsset"]))
         return pairs
 
-    @cache("binance.symbols", 30000)
+    @cache("binance.symbols", 86400)
     def get_symbols(self):
         info = self.get_exchangeinfo()
         symbols = []
@@ -135,7 +137,7 @@ class RestApiBinance:
             symbols.append(s["symbol"])
         return symbols
 
-    @cache("binance.prices", 3000)
+    @cache("binance.prices", 420)
     def get_prices(self):
         url = self.BASE_URL + self.PATH_PRICE
         self.logger.debug("requesting: "+ url)
