@@ -54,6 +54,21 @@ Example:s
 `/history BTC 2 weeks`
 `/history BTC 2 months`
 
+**/watch**
+Ccommand structured
+` /watch btc drop 50% 14 days` (Percentage drop)
+` /watch btc rise 50% 1 month`
+` /watch btc drop 5000 2 days` (absolute value drop)
+` /watch btc drop 5000 from ath`
+
+Comparisons are vs current price unless "from ath" is set 
+
+**/showwatches**
+List all watches for you
+
+**/clearwatches**  
+Clear current watches.
+
 **/clear**  
 Clear current alerts.
 

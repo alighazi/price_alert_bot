@@ -1,6 +1,6 @@
 import traceback
 import math, time, requests, pickle, traceback, sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 import logger_config
@@ -61,7 +61,56 @@ class TgBotService(object):
             self.removeAlert(tr[0], tr[1], tr[2], tr[3], tr[4])
 
     def processWatches(self):
-        return "none"
+        if 'watches' not in self.db:
+            return  
+        for watch in self.db['watches']:
+            # if watch is ath true then get the ath and athdate
+            if watch['ath']:
+                comparitorprice, comparitordate = self.repository.get_ath(watch['fsym'], watch['tsym'])[1] 
+            else:
+                # caluclate periodindays from duration and duration_type
+                duration = watch['duration'] 
+                if watch['duration_type'][:3] == "day":
+                    durationindays = duration
+                elif watch['duration_type'][:4] == "week":
+                    durationindays = duration * 7
+                elif watch['duration_type'][:5] == "month":
+                    durationindays = duration * 30
+                elif watch['duration_type'][:4] == "year":
+                    durationindays = duration * 365
+
+                # at this point we have durationindays and can work backwards from now to find the comparitor date
+                comparitordate = datetime.now() - timedelta(days=durationindays)
+
+                # get the price for that symbol pair on that date
+                comparitorprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], comparitordate)
+
+            # log info the comparitor price and date
+            self.log.info(f"comparitor price: {comparitorprice} on {comparitordate}")
+
+            # get the current price
+            currentprice = self.repository.get_price_if_valid(watch['fsym'], watch['tsym'])
+
+
+           # convert percentage values to absolute
+            # if target contains a percentage then convert to absolute
+            if '%' in watch['target']:
+                targetpercentage = float(watch['target'].replace('%', ''))
+                target = comparitorprice * (targetpercentage / 100)
+            else:
+                target = watch['target']
+
+           # do the comparison
+            if watch['op'] == 'drop':
+               if currentprice < target:
+                   self.api.sendMessage(f"Drop watch: {watch['fsym']} is lower than {format_price(target)} at {format_price(comparitorprice)} {watch['tsym']}", chatId=watch['chatId'])
+            elif watch['op'] == 'rise':
+                    if currentprice > target:
+                        self.api.sendMessage(f"rise watch: {watch['fsym']} is higher than {format_price(target)} at {format_price(comparitorprice)} {watch['tsym']}", chatId=watch['chatId'])
+
+
+            
+        return
 
     def processUpdates(self, updates):
         for update in updates:

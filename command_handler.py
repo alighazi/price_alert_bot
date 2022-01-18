@@ -53,6 +53,8 @@ class CommandHandler:
                 self.watch(chatId, command)
             elif command.startswith('showwatches'):
                 self.showwatches(chatId, command)
+            elif command.startswith('clearwatches'):
+                self.clearwatches(chatId, command)
             else:
                 self.api.sendMessage('Unknown command', chatId)
 
@@ -60,6 +62,18 @@ class CommandHandler:
         if 'alerts' in self.db and chatId in self.db['alerts']:
             self.db['alerts'].pop(chatId)
         self.api.sendMessage('Done.',chatId)
+
+
+    def clearwatches(self, chatId, command):
+        if 'watchs' not in self.db:
+            self.api.sendMessage("No watchs", chatId)
+            return
+
+        for watch in self.db['watchs']:
+            if watch['chatId'] == chatId:
+                self.db['watchs'].remove(watch)
+
+        self.api.sendMessage("Done.", chatId)
 
     def showwatches(self, chatId, command):
         if 'watchs' not in self.db:
@@ -69,18 +83,18 @@ class CommandHandler:
         msg = ''
         for watch in self.db['watchs']:
             if watch['chatId'] == chatId:
-                msg += '{} {} {} {} {} {}\n'.format(watch['fsym'], watch['op'], watch['target'], watch['duration'], watch['duration_type'], watch['from_ath'])
+                msg += '{} {} {} {} {}\n'.format(watch['fsym'], watch['op'], watch['target'], watch['duration'], watch['duration_type'])
         self.api.sendMessage(msg, chatId)
 
     def watch(self, chatId, command):
         # command structured
         # /watch btc drop 50% 14 days
-        # /watch btc spike 50% 1 month
+        # /watch btc rise 50% 1 month
         # /watch btc drop 5000 2 days
-        # /watch btc drop 5000 2 days from ath
+        # /watch btc drop 5000 from ath
 
         parts = command.split()
-        if not (len(parts) in [6,8]):
+        if not (len(parts) in [6]):
             self.api.sendMessage("Invalid command, see help", chatId)
             return
 
@@ -89,8 +103,8 @@ class CommandHandler:
         tsym = config.DEFAULT_FIAT
 
         op = parts[2].lower()
-        if op not in ['drop','spike']:
-            self.api.sendMessage("Invalid command, must be drop or spike", chatId)
+        if op not in ['drop','rise']:
+            self.api.sendMessage("Invalid command, must be drop or rise", chatId)
             return
 
         target = parts[3]
@@ -113,12 +127,16 @@ class CommandHandler:
         if len(parts) > 4:
             duration = parts[4]
         
-        # if duration is not a number then something is wrong, return error
-        try:
-            duration = int(duration)
-        except:
-            self.api.sendMessage("Invalid command, must be a number", chatId)
-            return
+        
+        # if duration is not a number then something is wrong, return error unless it is "from"
+        if parts[4]+parts[5].lower() == 'fromath':
+            from_ath = True
+        else:
+            try:
+                duration = int(duration)
+            except:
+                self.api.sendMessage("Invalid command, must be a number or from ath", chatId)
+                return
 
         # if there is a 5th part, it is the duration type
         if len(parts) > 5:
@@ -126,16 +144,6 @@ class CommandHandler:
         else:
             duration_type = 'days'
 
-        # if there is a sixth part it must be "from ath", else error
-        if len(parts) > 6:
-            if parts[6] != 'from':
-                self.api.sendMessage("Invalid command, must be from ath", chatId)
-                return
-            else:
-                from_ath = True
-        else:
-            from_ath = False
-            
         # create an watch dictionar
         watch = {}
         watch['chatId'] = chatId
