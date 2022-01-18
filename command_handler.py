@@ -94,7 +94,7 @@ class CommandHandler:
         # /watch btc drop 5000 from ath
 
         parts = command.split()
-        if not (len(parts) in [6]):
+        if not (len(parts) in [5,6]): # if you don't specify period it is days
             self.api.sendMessage("Invalid command, see help", chatId)
             return
 
@@ -123,15 +123,19 @@ class CommandHandler:
         # this line never executes if there was something wrong with the target
         target = parts[3]
 
-        # if there is a 4th part, it is the time period
-        if len(parts) > 4:
-            duration = parts[4]
+        duration = parts[4]
         
         
         # if duration is not a number then something is wrong, return error unless it is "from"
-        if parts[4]+parts[5].lower() == 'fromath':
-            from_ath = True
+        if duration.lower() == 'from':
+            if parts[5].lower() == 'ath':
+                from_ath = True
+            else:
+                self.api.sendMessage("Invalid command, must be from ath", chatId)
+                return
         else:
+            from_ath = False    
+
             try:
                 duration = int(duration)
             except:
