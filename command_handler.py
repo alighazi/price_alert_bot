@@ -1,5 +1,6 @@
 import math, time, requests, pickle, traceback
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -9,6 +10,7 @@ from repository.market import MarketRepository
 import config
 from formating import format_price
 from api.binance_rest import CandleInterval
+
 
 
 class CommandHandler:
@@ -39,6 +41,20 @@ class CommandHandler:
                 self.chart(chatId, command)
             elif command.startswith('lower') or command.startswith('higher'):
                 self.higher_lower(chatId, command)
+            elif command.startswith('yesterday'):
+                self.yesterday(chatId, command)
+            elif command.startswith('history'):
+                self.history(chatId, command)
+            elif command.startswith('dropby'):
+                self.dropby(chatId, command)
+            elif command.startswith('ath'):
+                self.ath(chatId, command)
+            elif command.startswith('watch'):
+                self.watch(chatId, command)
+            elif command.startswith('showwatches'):
+                self.showwatches(chatId, command)
+            elif command.startswith('clearwatches'):
+                self.clearwatches(chatId, command)
             else:
                 self.api.sendMessage('Unknown command', chatId)
 
@@ -46,6 +62,148 @@ class CommandHandler:
         if 'alerts' in self.db and chatId in self.db['alerts']:
             self.db['alerts'].pop(chatId)
         self.api.sendMessage('Done.',chatId)
+
+
+    def clearwatches(self, chatId, command):
+        if 'watches' not in self.db:
+            self.api.sendMessage("No watches", chatId)
+            return
+
+        for watch in self.db['watches']:
+            if watch['chatId'] == chatId:
+                self.db['watches'].remove(watch)
+
+        self.api.sendMessage("Done.", chatId)
+
+    def showwatches(self, chatId, command):
+        if 'watches' not in self.db or len(self.db['watches']) == 0:
+            self.api.sendMessage("No watches", chatId)
+            return
+
+        msg = ''
+        for watch in self.db['watches']:
+            if watch['chatId'] == chatId:
+                msg += '{} {} {} {} {}\n'.format(watch['fsym'], watch['op'], watch['target'], watch['duration'], watch['duration_type'])
+        self.api.sendMessage(msg, chatId)
+
+    def watch(self, chatId, command):
+        # command structured
+        # /watch btc drop 50% 14 days
+        # /watch btc rise 50% 1 month
+        # /watch btc drop 5000 2 days
+        # /watch btc drop 5000 from ath
+
+        parts = command.split()
+        if not (len(parts) in [5,6]): # if you don't specify period it is days
+            self.api.sendMessage("Invalid command, see help", chatId)
+            return
+
+        fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+
+        op = parts[2].lower()
+        if op not in ['drop','rise']:
+            self.api.sendMessage("Invalid command, must be drop or rise", chatId)
+            return
+
+        target = parts[3]
+
+        # remove % if there is one in target
+        if target.endswith('%'):
+            target = target[:-1]
+        
+        # check if target is a number
+        try:
+            target = float(target)
+        except:
+            self.api.sendMessage("Invalid command, must be a number", chatId)
+            return
+        
+        # this line never executes if there was something wrong with the target
+        target = parts[3]
+
+        duration = parts[4]
+        
+        
+        # if duration is not a number then something is wrong, return error unless it is "from"
+        if duration.lower() == 'from':
+            if parts[5].lower() == 'ath':
+                from_ath = True
+                # rise from ath makes no sense and should error
+                if op == 'rise':
+                    self.api.sendMessage("Invalid command, rise from ath makes no sense", chatId)
+                    return
+            else:
+                self.api.sendMessage("Invalid command, must be from ath", chatId)
+                return
+        else:
+            from_ath = False    
+
+            try:
+                duration = int(duration)
+            except:
+                self.api.sendMessage("Invalid command, must be a number or from ath", chatId)
+                return
+
+        # if there is a 5th part, it is the duration type
+        if len(parts) > 5:
+            duration_type = parts[5]
+        else:
+            duration_type = 'days'
+
+        # create an watch dictionar
+        watch = {}
+        watch['chatId'] = chatId
+        watch['fsym'] = fsym
+        watch['tsym'] = tsym
+        watch['op'] = op
+        watch['target'] = target
+        watch['duration'] = duration
+        watch['duration_type'] = duration_type
+        watch['from_ath'] = from_ath
+
+        if 'watches' not in self.db:
+            self.db['watches'] = []
+        self.db['watches'].append( watch) 
+        self.api.sendMessage("Watch added", chatId)
+        return
+
+
+
+        if not self.repository.isPricePairValid(fsym, tsym):
+            self.api.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
+            return
+
+        resp = 'Watching {} {} {}'.format(fsym, op, parts[3])
+        self.api.sendMessage(resp, chatId)
+
+    def ath(self, chatId, command):
+        parts = command.split()
+        if len(parts) > 3:
+            self.api.sendMessage("Invalid command, enter 2 symbols, eg: BTC USDT", chatId)
+            return
+
+        fsym = config.DEFAULT_COIN
+        if len(parts) >1:
+            fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+        if len(parts) > 2:
+            tsym = parts[2].upper()
+
+
+        if not self.repository.isPricePairValid(fsym, tsym):
+            self.api.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
+            return
+
+        ath, athdate = self.repository.get_ath(fsym, tsym)
+        
+        resp = 'ATH for {} was {} {} on {}'.format(fsym, format_price(ath),tsym,datetime.fromtimestamp( athdate /1000 ).strftime("%Y/%m/%d")  )
+        
+        self.api.sendMessage(resp, chatId)
+
+             
 
     def price(self, chatId, command):
         parts = command.split()
@@ -66,12 +224,199 @@ class CommandHandler:
             return
 
         price = self.repository.get_price_if_valid(fsym, tsym)
-        resp = '1 {} = {} {}'.format(fsym, format_price(price),tsym)
+        ath, athdate = self.repository.get_ath(fsym,tsym)
+        resp = '1 {} = {} {} compared to ATH of {}'.format(fsym, format_price(price),tsym, format_price(ath))
         chartFile = self.repository.get_chart_near(fsym, tsym)
         if chartFile != None:
             self.api.sendPhoto(chartFile, resp, chatId)
         else:
             self.api.sendMessage(resp, chatId)
+
+    def yesterday(self, chatId, command):
+        parts = command.split()
+        if len(parts) > 4:
+            self.api.sendMessage("Invalid command, enter 2 symbols, eg: BTC USD", chatId)
+            return
+
+        fsym = config.DEFAULT_COIN
+        if len(parts) > 1:
+            fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+
+        # set ydate variable to yesterdays date  
+        ydate = datetime.now() - timedelta(days=1)
+
+        # get the price for that date                
+        returnedprice = self.repository.get_day_price(fsym, tsym, ydate)
+
+        print(returnedprice)
+        print(type(returnedprice))
+        print('.')
+        resp = ' price yesterday was {}'.format(format_price(returnedprice))
+
+        self.api.sendMessage(resp, chatId)
+
+
+    def dropby(self, chatId, command):
+        parts = command.split()
+        if len(parts) != 5:
+            self.api.sendMessage("Invalid comman: /dropby BTC 50% <n> [days|weeks|months|years]", chatId)
+            return
+
+        fsym = config.DEFAULT_COIN
+        if len(parts) > 1:
+            fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+
+        # dropbythreshold from parts[2]
+        dropbythreshold = parts[2]
+
+        # if dropbythreshold has a % sign then remove it
+        if dropbythreshold.endswith('%'):
+            dropbythreshold = dropbythreshold[:-1]
+
+        # if dropbythreshold is not a number then return
+        if not dropbythreshold.isdigit():
+            self.api.sendMessage("Invalid dropby threshold", chatId)
+            return
+
+        # get the current price
+        price = self.repository.get_price_if_valid(fsym, tsym)
+
+        # get the historical price
+        
+        # default duration is 1 day
+        duration = 1
+
+        if len(parts) > 3:
+            # convert parts[2].upper() from string to integer
+            try:
+                duration = int(parts[3])
+            except ValueError:
+                self.api.sendMessage("Invalid command", chatId)
+                return
+
+
+        if len(parts) > 4:
+            # get the duration unit from parts[3]
+            duration_unit = parts[4].lower()
+
+            # if the duration is weeks or months then muliplay the duration by 7 or 30 respectively
+            # if first 3 letters of duration_unit are 'day' then duration is in days
+            # if first 3 letters of duration_unit are 'wee' then duration is in weeks
+            # if first 3 letters of duration_unit are 'mon' then duration is in months
+            if duration_unit[:3] == 'day':
+                duration = duration
+            elif duration_unit[:4] == 'week':
+                duration = duration * 7     
+            elif duration_unit[:5] == 'month':
+                duration = duration * 30
+            elif duration_unit[:4] == 'year':
+                duration = duration * 365
+            else:
+                self.api.sendMessage("Invalid command ", chatId)
+                return
+
+        # if the duration is less then one then sendmessage error
+        if duration < 1:
+            self.api.sendMessage("Invalid duration", chatId)
+            return
+    
+        tsym = config.DEFAULT_FIAT
+
+
+
+        # set hdate variable to historical date  
+        hdate = datetime.now() - timedelta(days=duration)
+
+        # get the price for that date                
+        historicalprice = self.repository.get_day_price(fsym, tsym, hdate)
+
+        pricedifference = historicalprice - price
+
+        # difference as a percentage
+        pricedifferencepercentage = (pricedifference / historicalprice) * 100
+
+        # if the difference is less than the dropbythreshold then sendmessage
+        if pricedifferencepercentage < float(dropbythreshold):
+            resp = 'LESS drop: price dropped by {:.1f} percent, changed {} to {}'.format(pricedifferencepercentage, format_price(historicalprice), format_price(price))
+        else:
+            resp = 'MORE drop: price dropped by {:.1f} percent, changed {} to {}'.format(pricedifferencepercentage, format_price(historicalprice), format_price(price))
+    
+        self.api.sendMessage(resp, chatId)
+
+    def history(self, chatId, command):
+        parts = command.split()
+        if len(parts) > 4:
+            self.api.sendMessage("Invalid command, enter /history BTC 5 days", chatId)
+            return
+
+        fsym = config.DEFAULT_COIN
+        if len(parts) > 1:
+            fsym = parts[1].upper()
+
+        tsym = config.DEFAULT_FIAT
+        
+        # default duration is 1 day
+        duration = 1
+
+        if len(parts) > 2:
+            # convert parts[2].upper() from string to integer
+            try:
+                duration = int(parts[2])
+            except ValueError:
+                self.api.sendMessage("Invalid command, enter /history BTC 5 days", chatId)
+                return
+
+
+        if len(parts) > 3:
+            # get the duration unit from parts[3]
+            duration_unit = parts[3].lower()
+
+            # if the duration is weeks or months then muliplay the duration by 7 or 30 respectively
+            # if first 3 letters of duration_unit are 'day' then duration is in days
+            # if first 3 letters of duration_unit are 'wee' then duration is in weeks
+            # if first 3 letters of duration_unit are 'mon' then duration is in months
+            if duration_unit[:3] == 'day':
+                duration = duration
+            elif duration_unit[:4] == 'week':
+                duration = duration * 7     
+            elif duration_unit[:5] == 'month':
+                duration = duration * 30
+            elif duration_unit[:4] == 'year':
+                duration = duration * 365
+            else:
+                self.api.sendMessage("Invalid command, enter /history BTC <n> [days|weeks|months|years]", chatId)
+                return
+
+        # if the duration is less then one then sendmessage error
+        if duration < 1:
+            self.api.sendMessage("Invalid duration", chatId)
+            return
+    
+        tsym = config.DEFAULT_FIAT
+
+
+
+        # set hdate variable to historical date  
+        hdate = datetime.now() - timedelta(days=duration)
+
+        # get the price for that date                
+        returnedprice = self.repository.get_day_price(fsym, tsym, hdate)
+
+        print(returnedprice)
+        print(type(returnedprice))
+        print('.')
+
+        # set printablehdate to hdate formatted as long date
+        printablehdate = hdate.strftime('%B %d, %Y')
+
+        resp = ' price {} days ago on {} was {}'.format(duration, printablehdate ,format_price(returnedprice))
+
+        self.api.sendMessage(resp, chatId)
+
 
     def chart(self, chatId, command):
         parts = command.split()
@@ -145,7 +490,7 @@ class CommandHandler:
         msg = f'Notification set for {fsym} {"below" if op == "LOWER" else "above"} {format_price(target)} {tsym}.'
         self.api.sendMessage(msg, chatId)
 
-    @cache("cmd.Help", 100000)
+    @cache("cmd.Help", 10)
     def help(self, chatId, command):
         self.log.debug("reading help file")
         with open(config.HELP_FILENAME, 'rb') as fp:
