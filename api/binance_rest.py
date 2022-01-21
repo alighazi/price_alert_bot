@@ -91,7 +91,7 @@ class RestApiBinance:
 
 
         # get the HIGH price from the second value of the first item in the json response
-        print('about to fail')
+        # print('about to fail')
         return float(r.json()[0][2])
 
 
