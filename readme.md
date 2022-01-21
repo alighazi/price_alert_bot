@@ -46,6 +46,16 @@ Get the current alerts.
 **/clear**  
 Clear current alerts.
 
+**/yesterday**
+Price yesterday for a coin
+
+**/history**
+Historical price of a coin in the past. Supports days, weeks, months, years.
+
+`/history BTC 5 days` ( BTC price 5 days ago)
+
+`/yesterday eth` (price of ether yesterday)
+
 **/dropby**
 Check if a coin has dropped by a percentage
 
