@@ -1,3 +1,4 @@
+import hashlib
 import traceback
 import math, time, requests, pickle, traceback, sys
 from datetime import datetime, timedelta
@@ -153,8 +154,14 @@ class TgBotService(object):
 
     def persist_db(self):
         self.log.debug('persisting db')
-        with open(config.DB_FILENAME, 'wb') as fp:
-            pickle.dump(self.db, fp)
+        if hashlib.md5(repr(self.db).encode('utf-8')).hexdigest() == self.dbmd5:
+            self.log.debug('no change')
+        else:
+            cache.log.debug('write to disk and update md5')
+            with open(config.DB_FILENAME, 'wb') as fp:
+                pickle.dump(self.db, fp)
+            self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
+
 
     def run(self, debug=False):
         self.log = logger_config.instance
@@ -167,9 +174,11 @@ class TgBotService(object):
         try:
             with open(config.DB_FILENAME, 'rb') as fp:
                 self.db = pickle.load(fp)
+            self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
         except:
             self.log.exception("error loading db, defaulting to empty db")
             self.db = {}
+            self.dbmd5 = ""
 
         self.api = TgApi(self.log)
         self.repository = MarketRepository(self.log)

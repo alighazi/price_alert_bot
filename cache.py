@@ -1,11 +1,13 @@
+import hashlib
 import pickle
 from pathlib import Path
 from time import time, sleep
 from datetime import datetime
 import logger_config
 
-class cache:
+class cache:    
     cache = {}
+    cachemd5 = ""
     FILENAME="data/cache.pickle"
     LOADED = False
     log = logger_config.instance
@@ -18,6 +20,7 @@ class cache:
                         cache.cache = pickle.load(fp)
                         self.log.debug(f"opened cache db: {len(cache.cache)} entries")
                         cache.LOADED = True
+                        cache.cachemd5 = hashlib.md5(repr(cache.cache).encode('utf-8')).hexdigest()
                 except:
                     self.log.error("failed to load cache file,")
                     cache.LOADED = False
@@ -41,7 +44,7 @@ class cache:
                 else:
                     self.log.debug(f"cache expired for key: {key}")
             else:
-                self.log.debug(f"cache miss for key: {key}")
+                self.log.info(f"cache miss for key: {key}")
             
             returnValue = fn(*args, **kwargs)
             if returnValue== None:
@@ -54,8 +57,13 @@ class cache:
     @staticmethod
     def persist():
         cache.log.debug('persisting cache')
-        with open(cache.FILENAME, 'wb') as fp:
-            pickle.dump(cache.cache, fp)
+        if hashlib.md5(repr(cache.cache).encode('utf-8')).hexdigest() == cache.cachemd5:
+            cache.log.debug('no change')
+        else:
+            cache.log.debug('write to disk and update md5')
+            with open(cache.FILENAME, 'wb') as fp:
+                pickle.dump(cache.cache, fp)
+            cache.cachemd5 = hashlib.md5(repr(cache.cache).encode('utf-8')).hexdigest()
 
     @staticmethod
     def invalidate(key):
