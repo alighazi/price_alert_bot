@@ -113,14 +113,14 @@ class TgBotService(object):
            # do the comparison
             if watch['op'] == 'drop':
                if currentprice < comparitorprice - target:
-                   self.api.sendMessage(f"Drop watch: {watch['fsym']} is {watch['target']} lower than {format_price(comparitorprice)} at {currentprice} {watch['tsym']}", watch['chatId'])
+                   self.api.sendMessage(f"Drop watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} lower than it was at {comparitordate} when it was {format_price(comparitorprice)} ", watch['chatId'])
                    self.log.debug("removing completed drop watch")
                    del self.db['watches'][i]
                else:
                    i += 1
             elif watch['op'] == 'rise':
                     if currentprice >  comparitorprice + target:
-                        self.api.sendMessage(f"rise watch: {watch['fsym']} is higher than {format_price(target)} at {format_price(comparitorprice)} {watch['tsym']}", watch['chatId'])
+                        self.api.sendMessage(f"Rise watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} higher than it was at {comparitordate} when it was {format_price(comparitorprice)} ", watch['chatId'])
                         self.log.debug("removing completed rise watch")
                         del self.db['watches'][i]
                     else:
