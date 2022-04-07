@@ -43,7 +43,7 @@ class TgApi:
         offset = last_update+1
         url = self.getTgUrl('getUpdates')
         r = self.request_session.post(
-            url=url, data={'offset': offset, 'limit': 100, 'timeout': 9})
+            url=url, data={'offset': offset, 'limit': 100, 'timeout': 50}) # 50 is the longest timeout, 30 is default, was 9. Make it slower to reduce network
         updates = r.json()
         if not 'ok' in updates or not updates['ok']:
             return None
