@@ -82,6 +82,9 @@ Example:
   
 Comparisons are vs current price unless "from ath" is set   
 
+**/showwatches**
+Show the watches
+
 **/ath**
 What is the ATH of a coin (only checks back to Oct 2021)
 
