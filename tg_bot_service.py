@@ -73,6 +73,7 @@ class TgBotService(object):
             # if watch is ath true then get the ath and athdate
             if watch['from_ath']:
                 comparitorprice, comparitordate = self.repository.get_ath(watch['fsym'], watch['tsym']) 
+                # comparitordate_str = comparitordate.strftime('%d-%b-%Y')
             else:
                 # caluclate periodindays from duration and duration_type
                 duration = watch['duration'] 
@@ -91,11 +92,12 @@ class TgBotService(object):
                 # date rounding to nearest day for comparitor date
                 comparitordate = comparitordate.replace(hour=0, minute=0, second=0, microsecond=0)
 
-                # create string version of comparitor date in dd-mmm-yyyy format
-                comparitordate_str = comparitordate.strftime('%d-%b-%Y')
 
                 # get the price for that symbol pair on that date
                 comparitorprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], comparitordate)
+
+            # create string version of comparitor date in dd-mmm-yyyy format
+            comparitordate_str = comparitordate.strftime('%d-%b-%Y')
 
             # log info the comparitor price and date
             self.log.debug(f"comparitor price: {comparitorprice} on {comparitordate}")
