@@ -91,6 +91,9 @@ class TgBotService(object):
                 # date rounding to nearest day for comparitor date
                 comparitordate = comparitordate.replace(hour=0, minute=0, second=0, microsecond=0)
 
+                # create string version of comparitor date in dd-mmm-yyyy format
+                comparitordate_str = comparitordate.strftime('%d-%b-%Y')
+
                 # get the price for that symbol pair on that date
                 comparitorprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], comparitordate)
 
@@ -113,14 +116,14 @@ class TgBotService(object):
            # do the comparison
             if watch['op'] == 'drop':
                if currentprice < comparitorprice - target:
-                   self.api.sendMessage(f"Drop watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} lower than it was at {comparitordate} when it was {format_price(comparitorprice)} ", watch['chatId'])
+                   self.api.sendMessage(f"Drop watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} lower than it was at {comparitordate_str} when it was {format_price(comparitorprice)} ", watch['chatId'])
                    self.log.debug("removing completed drop watch")
                    del self.db['watches'][i]
                else:
                    i += 1
             elif watch['op'] == 'rise':
                     if currentprice >  comparitorprice + target:
-                        self.api.sendMessage(f"Rise watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} higher than it was at {comparitordate} when it was {format_price(comparitorprice)} ", watch['chatId'])
+                        self.api.sendMessage(f"Rise watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} higher than it was at {comparitordate_str} when it was {format_price(comparitorprice)} ", watch['chatId'])
                         self.log.debug("removing completed rise watch")
                         del self.db['watches'][i]
                     else:
