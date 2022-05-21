@@ -107,3 +107,6 @@ help - get help about commands`
 
 
 for further help or discussion please use the telegram group https://t.me/alertbotgang
+
+Contributors
+ - https://github.com/raymondclowe
