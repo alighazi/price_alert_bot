@@ -46,5 +46,50 @@ Get the current alerts.
 **/clear**  
 Clear current alerts.
 
+**/yesterday**
+Price yesterday for a coin
+
+**/history**
+Historical price of a coin in the past. Supports days, weeks, months, years.
+
+Example:
+`/history BTC 5 days` ( BTC price 5 days ago)
+`/history BTC 3 days` (what was the price of Bitcoin 3 days ago in USD)  
+`/history BTC 2 weeks`  
+`/history BTC 2 months`  
+
+**/yesterday**
+Check yesterday's price
+
+Example:
+`/yesterday eth` (price of ether yesterday)
+
+**/dropby**
+Check if a coin has dropped by a percentage
+
+`/dropby BTC 50% 1 month` (Has BTC dropped by 50% in the last 1 month)
+
+
+**/watch**
+Command structured 
+
+Example:
+`/watch btc drop 50% 14 days` (Percentage drop)  
+`/watch btc rise 50% 1 month`  
+`/watch btc drop 5000 2 days` (absolute value drop)  
+`/watch btc drop 5000 from ath`  
+`/watch btc drop 75% from ath`  
+  
+Comparisons are vs current price unless "from ath" is set   
+
+**/showwatches**
+Show the watches
+
+**/ath**
+What is the ATH of a coin (only checks back to Oct 2021)
+
+`/ath BTC`
+
+
 **/help**  
 See this message.

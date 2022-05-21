@@ -1,0 +1,17 @@
+[Unit]
+Description=price_alert_bot service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /home/rcl/price_alert_bot/run.sh
+#ExecStop=/bin/bash /home/rcl/price_alert_bot/stop.sh
+Restart=always
+RestartSec=5
+TimeoutSec=60
+RuntimeMaxSec=infinity
+PIDFile=/tmp/price_alert_bot.pid
+User=rcl
+
+[Install]
+WantedBy=multi-user.target

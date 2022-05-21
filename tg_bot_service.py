@@ -1,6 +1,7 @@
+import hashlib
 import traceback
 import math, time, requests, pickle, traceback, sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 import logger_config
@@ -39,6 +40,7 @@ class TgBotService(object):
     def processAlerts(self):
         if 'alerts' not in self.db:
             return
+        self.log.debug('processing alerts')
         higher = 'HIGHER'
         lower = 'LOWER'
         alerts = self.db['alerts']
@@ -49,6 +51,7 @@ class TgBotService(object):
                 for op in ops:
                     tsyms = ops[op]
                     for tsym in tsyms:
+                        # self.log.info("ath for {} is {}".format(fsym, self.repository.get_ath(fsym, tsym)[0]))
                         targets = tsyms[tsym]
                         price = self.repository.get_price_if_valid(fsym, tsym)
                         for target in targets:
@@ -59,6 +62,85 @@ class TgBotService(object):
         for tr in toRemove:
             self.removeAlert(tr[0], tr[1], tr[2], tr[3], tr[4])
 
+    def processWatches(self):
+        self.log.debug('processing watches')
+        if 'watches' not in self.db:
+            return  
+        # self.log.debug(f'processing { len(self.db['watches']) } watches')
+        i = 0
+        while i < len (self.db['watches']):
+            watch = self.db['watches'][i]
+            # if watch is ath true then get the ath and athdate
+            if watch['from_ath']:
+                comparitorprice, comparitordate = self.repository.get_ath(watch['fsym'], watch['tsym']) 
+
+                # convert comparitordate from epoch ms to datetime
+                comparitordate = datetime.fromtimestamp(comparitordate/1000)
+                comparitordate_str = comparitordate.strftime('%d-%b-%Y')
+            else:
+                # caluclate periodindays from duration and duration_type
+                duration = watch['duration'] 
+                if watch['duration_type'][:3] == "day":
+                    durationindays = duration
+                elif watch['duration_type'][:4] == "week":
+                    durationindays = duration * 7
+                elif watch['duration_type'][:5] == "month":
+                    durationindays = duration * 30
+                elif watch['duration_type'][:4] == "year":
+                    durationindays = duration * 365
+
+                # at this point we have durationindays and can work backwards from now to find the comparitor date
+                comparitordate = datetime.now() - timedelta(days=durationindays)
+
+                # date rounding to nearest day for comparitor date
+                comparitordate = comparitordate.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+                # get the price for that symbol pair on that date
+                comparitorprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], comparitordate)
+
+                # create string version of comparitor date in dd-mmm-yyyy format
+                comparitordate_str = comparitordate.strftime('%d-%b-%Y')
+
+            # log info the comparitor price and date
+            self.log.debug(f"comparitor price: {comparitorprice} on {comparitordate}")
+
+            # get the current price
+            currentprice = self.repository.get_price_if_valid(watch['fsym'], watch['tsym'])
+
+
+
+           # convert percentage values to absolute
+            # if target contains a percentage then convert to absolute
+            if '%' in watch['target']:
+                targetpercentage = float(watch['target'].replace('%', ''))
+                target = comparitorprice * (targetpercentage / 100)
+            else:
+                target = int(watch['target'])
+
+           # do the comparison
+            if watch['op'] == 'drop':
+               if currentprice < comparitorprice - target:
+                   self.api.sendMessage(f"Drop watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} lower than it was at {comparitordate_str} when it was {format_price(comparitorprice)} ", watch['chatId'])
+                   self.log.debug("removing completed drop watch")
+                   del self.db['watches'][i]
+               else:
+                   i += 1
+            elif watch['op'] == 'rise':
+                    if currentprice >  comparitorprice + target:
+                        self.api.sendMessage(f"Rise watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} higher than it was at {comparitordate_str} when it was {format_price(comparitorprice)} ", watch['chatId'])
+                        self.log.debug("removing completed rise watch")
+                        del self.db['watches'][i]
+                    else:
+                        i += 1
+            else: # this item is invalid, delete it
+                self.log.error(f"invalid watch op: {watch['op']}")
+                del self.db['watches'][i]
+
+
+
+            
+        return
 
     def processUpdates(self, updates):
         for update in updates:
@@ -79,8 +161,15 @@ class TgBotService(object):
 
 
     def persist_db(self):
-        with open(config.DB_FILENAME, 'wb') as fp:
-            pickle.dump(self.db, fp)
+        self.log.debug('persisting db')
+        if hashlib.md5(repr(self.db).encode('utf-8')).hexdigest() == self.dbmd5:
+            self.log.debug('no change')
+        else:
+            cache.log.debug('write to disk and update md5')
+            with open(config.DB_FILENAME, 'wb') as fp:
+                pickle.dump(self.db, fp)
+            self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
+
 
     def run(self, debug=False):
         self.log = logger_config.instance
@@ -93,9 +182,11 @@ class TgBotService(object):
         try:
             with open(config.DB_FILENAME, 'rb') as fp:
                 self.db = pickle.load(fp)
+            self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
         except:
             self.log.exception("error loading db, defaulting to empty db")
             self.db = {}
+            self.dbmd5 = ""
 
         self.api = TgApi(self.log)
         self.repository = MarketRepository(self.log)
@@ -105,9 +196,14 @@ class TgBotService(object):
         self.last_update = self.db['last_update'] if 'last_update' in self.db else 0
         # main loop
         loop = True
-        while loop:    
+        while loop:
+            # delay for 2 seconds
+            time.sleep(4)
+
+
             try:                
-                updates = self.api.getUpdates(self.last_update)       
+                updates = self.api.getUpdates(self.last_update)   
+ 
                 if updates is None:
                     self.log.error('get update request failed')
                 else:
@@ -116,10 +212,17 @@ class TgBotService(object):
                     self.processAlerts()
                 except:
                     self.log.exception("exception at processing alerts")
+                try:
+                    self.processWatches()
+                except:
+                    self.log.exception("exception at processing watches")
                 time.sleep(1)            
             except KeyboardInterrupt:
                 self.log.info("interrupt received, stopping…")
                 loop = False
+            except requests.exceptions.ConnectionError as e:
+                # A serious problem happened, like DNS failure, refused connection, etc.
+                updates = None   
             except:            
                 self.log.exception("exception at processing updates")
                 loop = False
