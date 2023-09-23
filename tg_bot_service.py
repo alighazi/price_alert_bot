@@ -118,19 +118,57 @@ class TgBotService(object):
             else:
                 target = int(watch['target'])
 
+
+            # lets see if this watch is persistent
+            persistent = False
+            last_notify = 0
+            notify_frequency = 24 * 60 * 60
+            if 'persistent' in watch:
+                if watch['persistent']:
+                    persistent = True
+                if 'last_notify' in watch:
+                    last_notify = watch['last_notify']
+                    # convert last_notify from int as epoch to datetime
+                if 'notify_frequency' in watch:
+                    notify_frequency = watch['notify_frequency']
+            last_notify = datetime.fromtimestamp(last_notify/1000)
+                 
+                
+
            # do the comparison
             if watch['op'] == 'drop':
-               if currentprice < comparitorprice - target:
-                   self.api.sendMessage(f"Drop watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} lower than it was at {comparitordate_str} when it was {format_price(comparitorprice)} ", watch['chatId'])
-                   self.log.debug("removing completed drop watch")
-                   del self.db['watches'][i]
-               else:
-                   i += 1
+                if currentprice < comparitorprice - target:
+                    if persistent: # have to check it hasn't been notified too recently                        
+                        if datetime.now() - last_notify < timedelta(seconds=notify_frequency):
+                            self.log.debug("persistent watch, not notifying")
+                            i += 1
+                            continue
+                                        
+                    self.api.sendMessage(f"Drop watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} lower than it was at {comparitordate_str} when it was {format_price(comparitorprice)} ", watch['chatId'])
+                    if not persistent:
+                        self.log.debug("removing completed drop watch")
+                        del self.db['watches'][i]
+                    # set the most recent notify key as now epoch as int
+                    self.db['watches'][i]['last_notify'] = int(datetime.now().timestamp()) * 1000
+                
+                else:
+                    i += 1
             elif watch['op'] == 'rise':
                     if currentprice >  comparitorprice + target:
+                        if persistent:
+                            if datetime.now() - last_notify < timedelta(seconds=notify_frequency):
+                                self.log.debug("persistent watch, not notifying")
+                                i += 1
+                                continue
+
                         self.api.sendMessage(f"Rise watch: {watch['fsym']} is {currentprice} {watch['tsym']} which is at least {watch['target']} higher than it was at {comparitordate_str} when it was {format_price(comparitorprice)} ", watch['chatId'])
-                        self.log.debug("removing completed rise watch")
-                        del self.db['watches'][i]
+                        if not persistent:
+                            self.log.debug("removing completed rise watch")
+                            del self.db['watches'][i]
+                        else:
+                            # set the most recent notify key as now epoch as int
+                            self.db['watches'][i]['last_notify'] = int(datetime.now().timestamp()) * 1000                        
+
                     else:
                         i += 1
             else: # this item is invalid, delete it

@@ -88,6 +88,15 @@ What is the ATH of a coin (only checks back to Oct 2021)
 `/ath BTC`
 
 
+**/delete**
+Delete alerts or watches.
+
+`/delete` Show list of alerts and watches with delete IDs.
+
+`/delete 1234` Delete alert or watch with ID 1234.
+
+
+
 **/help**  
 See this message.
 

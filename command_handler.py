@@ -11,8 +11,8 @@ import config
 from formating import format_price
 from api.binance_rest import CandleInterval
 
-
-
+from utils import get_id
+from utils import human_format_seconds
 class CommandHandler:
 
     def __init__(self, api, repository, db, log):
@@ -55,8 +55,108 @@ class CommandHandler:
                 self.showwatches(chatId, command)
             elif command.startswith('clearwatches'):
                 self.clearwatches(chatId, command)
+            elif command.startswith('delete'):
+                self.delete(chatId, command)
             else:
                 self.api.sendMessage('Unknown command', chatId)
+
+    def delete(self, chatId, command):
+        parts = command.split()
+        # self.log.debug('Delete command')
+        
+        if len(parts) == 1:  # list all the watches and alerts with an ID
+            # self.log.debug('Delete listing')
+            deleteList  = "Here are the alerts and watches you can delete: \n \n"
+            
+                # first list all the alerts that belong to this user, and give a 4 letter ID which is the first three letters of a hash of the item
+                # this is so that the user can delete the alert by typing the ID
+                # this is not a security measure, it is just to make it easier for the user to delete the alerts
+                # if the user is not logged in, the ID will be the same as the alert ID, so
+            if 'alerts' in self.db and chatId in self.db['alerts']:
+                alerts=self.db['alerts'][chatId]
+                for fsym in alerts:
+                    for op in alerts[fsym]:
+                        for tsym in alerts[fsym][op]:
+                            for target in alerts[fsym][op][tsym]:
+                                hashOfAlert = get_id(chatId, target)[:4]
+                                alertString = f'{fsym} {op} {target} {tsym}\n' 
+                                deleteList += f'ID={hashOfAlert} : {alertString} \n'
+            else:
+                deleteList += 'No alert is set \n\n'
+
+            # now the watches
+            if 'watches' in self.db:
+                for watch in self.db['watches']:
+                    if watch['chatId'] == chatId:
+                        hashOfWatch = str(get_id(chatId,watch)[:4])
+                        # persistString is either blank or the word "persistent" followed by the notification frequency
+                        if 'persistent' in watch and watch['persistent']:
+                            persistString =f'persistent {human_format_seconds(watch["notify_frequency"])}'
+                        else:
+                            persistString = ''
+                        
+                        watchString = f'{watch["fsym"]} {watch["op"]} {watch["target"]} {watch["duration"]} {watch["duration_type"]} {persistString}'
+                        deleteList += f'ID={hashOfWatch} : {watchString} \n'
+                        
+            else:
+                deleteList += '\n No watches  \n'
+
+
+            deleteList += ' \nTo delete an alert or watch, type /delete <ID>'
+            
+
+            self.api.sendMessage(deleteList, chatId)
+
+        elif len(parts) == 2: # delete a specific watch or alert
+            # get the id and make sure it is a 4 digit hex value
+            deleteID = parts[1]
+            if len(deleteID)!= 4:
+                self.api.sendMessage("Invalid ID, must be 4 characters long", chatId)
+                return
+            
+            # if it is not valid hex then error and return
+            try:
+                int(deleteID, 16)
+            except:
+                self.api.sendMessage("Invalid ID, must be 4 hex characters long", chatId)
+                return           
+
+
+# here we scan through all of them and find the one to delete
+            if 'alerts' in self.db and chatId in self.db['alerts']:
+                alerts=self.db['alerts'][chatId]
+                for fsym in alerts:
+                    for op in alerts[fsym]:
+                        for tsym in alerts[fsym][op]:
+                            for target in alerts[fsym][op][tsym]:
+                                alertString = f'{fsym} {op} {target} {tsym}\n' 
+                                hashOfAlert = get_id(chatId, target)[:4]
+                                if deleteID == hashOfAlert:
+                                    self.db['alerts'][chatId][fsym][op][tsym].remove(target)
+                                    self.api.sendMessage("Done", chatId)
+                                    self.log.info(f'Alert deleted {alertString}')
+                                    return
+
+            # now the watches
+            if 'watches' in self.db:
+                for watch in self.db['watches']:
+                    if watch['chatId'] == chatId:
+                        watchString = f'{watch["fsym"]} {watch["op"]} {watch["target"]} {watch["duration"]} {watch["duration_type"]}'
+                        hashOfWatch = get_id(chatId, watch)[:4]
+                        if str(deleteID) == str(hashOfWatch):
+                            self.db['watches'].remove(watch)
+                            self.api.sendMessage("Done", chatId)
+                            self.log.info(f'Watch deleted {watch}')
+                            return
+                        
+            self.api.sendMessage('Not found', chatId)
+            
+        else:
+            self.api.sendMessage('Unknown command', chatId)
+            return
+
+
+
 
     def clear(self, chatId, command):
         if 'alerts' in self.db and chatId in self.db['alerts']:
@@ -83,20 +183,36 @@ class CommandHandler:
         msg = ''
         for watch in self.db['watches']:
             if watch['chatId'] == chatId:
-                msg += '{} {} {} {} {}\n'.format(watch['fsym'], watch['op'], watch['target'], watch['duration'], watch['duration_type'])
+                # persistString is either empty or it the word "persistent" followed by the notify_frequency duration
+                persistString = ''
+                if 'persistent' in watch and watch['persistent']:
+                    persistString =f'persistent repeating every {human_format_seconds(watch["notify_frequency"])}'
+                msg += '{} {} {} {} {} {}\n'.format(watch['fsym'], watch['op'], watch['target'], watch['duration'], watch['duration_type'], persistString)
+        
+                
         self.api.sendMessage(msg, chatId)
 
     def watch(self, chatId, command):
         # command structured
         # /watch btc drop 50% 14 days
         # /watch btc rise 50% 1 month
+        # /watch btc rise 50% 1 month persistent
         # /watch btc drop 5000 2 days
         # /watch btc drop 5000 from ath
+        # /watch btc drop 5000 from ath persistent {hourly|daily|weekly|minute}
 
-        parts = command.split()
-        if not (len(parts) in [5,6]): # if you don't specify period it is days
+        frequency_mapping = {
+            'weekly': 7 * 24 * 60 * 60,
+            'daily': 24 * 60 * 60,
+            'hourly': 60 * 60,
+            'minute': 60
+        }
+
+        parts = command.lower().split()
+        if not (len(parts) in [5,6,7,8]): # if you don't specify period it is days
             self.api.sendMessage("Invalid command, see help", chatId)
             return
+        
 
         fsym = parts[1].upper()
 
@@ -152,6 +268,35 @@ class CommandHandler:
         else:
             duration_type = 'days'
 
+        # unless it is the word persist in which case it is still days
+        if duration_type.startswith('persist'):
+            duration_type = 'days'
+            persistence = True
+            notify_frequency = 24 * 60 * 60 # 24 hours
+            if len(parts) > 6:
+                if parts[6] in frequency_mapping:
+                    notify_frequency = frequency_mapping[parts[6]]
+                else:
+                    self.api.sendMessage("Invalid frequency, must be minute, hourly, daily, weekly", chatId)
+                    return
+
+        # if there are 6 or 7 parts and the last part starts 'persist' then persistence is true
+        persistence = False
+        if len(parts) in [6, 7, 8] and (parts[6].lower().startswith('persist')):
+            persistence = True
+            notify_frequency = 24 * 60 * 60 # 24 hours
+            if parts[7] in frequency_mapping:
+                notify_frequency = frequency_mapping[parts[7]]
+            else:
+                self.api.sendMessage("Invalid frequency, must be minute, hourly, daily, weekly", chatId)
+                return
+                
+
+
+        if not self.repository.isPricePairValid(fsym, tsym):
+            self.api.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
+            return
+        
         # create an watch dictionar
         watch = {}
         watch['chatId'] = chatId
@@ -162,21 +307,21 @@ class CommandHandler:
         watch['duration'] = duration
         watch['duration_type'] = duration_type
         watch['from_ath'] = from_ath
+        watch['persistent'] = persistence
+        watch['last_notify'] = 0 # Zero epoch
+        # once per 24 hours as default
+        watch['notify_frequency']  = notify_frequency
+
 
         if 'watches' not in self.db:
             self.db['watches'] = []
+
         self.db['watches'].append( watch) 
-        self.api.sendMessage("Watch added", chatId)
-        return
-
-
-
-        if not self.repository.isPricePairValid(fsym, tsym):
-            self.api.sendMessage("Invalid symbols {} {}".format(fsym,tsym), chatId)
-            return
+        # self.api.sendMessage("Watch added", chatId)
 
         resp = 'Watching {} {} {}'.format(fsym, op, parts[3])
         self.api.sendMessage(resp, chatId)
+        return
 
     def ath(self, chatId, command):
         parts = command.split()
