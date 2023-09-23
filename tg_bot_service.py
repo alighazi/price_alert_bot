@@ -69,6 +69,7 @@ class TgBotService(object):
         # self.log.debug(f'processing { len(self.db['watches']) } watches')
         i = 0
         while i < len (self.db['watches']):
+            print(f'processing watch [{i}] of {len(self.db["watches"])}')
             watch = self.db['watches'][i]
             # if watch is ath true then get the ath and athdate
             if watch['from_ath']:
@@ -88,6 +89,8 @@ class TgBotService(object):
                     durationindays = duration * 30
                 elif watch['duration_type'][:4] == "year":
                     durationindays = duration * 365
+
+                durationindays = int(durationindays)
 
                 # at this point we have durationindays and can work backwards from now to find the comparitor date
                 comparitordate = datetime.now() - timedelta(days=durationindays)
@@ -171,6 +174,59 @@ class TgBotService(object):
 
                     else:
                         i += 1
+            elif watch['op'] == 'stable':
+                # logic for stable is:
+                
+                # if it is persistent then check the last notify because if that fails then there is no point in calculating the stabilit
+                if persistent:
+                    if datetime.now() - last_notify < timedelta(seconds=notify_frequency):
+                        self.log.debug("persistent watch, not notifying")
+                        i += 1
+                        continue
+
+                # get current price
+                todaysprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], datetime.now())
+
+                if '%' in watch['target']:
+                    pricerangepercentage = float(watch['target'].replace('%', ''))
+                    pricerange = comparitorprice * (pricerangepercentage / 100)
+                else:
+                    pricerange = int(watch['target'])
+
+                # work out the bounds
+                #   stable_price_lower_bound
+                stable_price_lower_bound = todaysprice - pricerange
+
+
+                #   stable_price_higher_bound
+                stable_price_higher_bound = todaysprice + pricerange
+                
+                stable = True
+                testday_datetime = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+                # Loop through the last n days
+                for day in range(durationindays):
+                    current_day = testday_datetime - timedelta(days=day)
+                    
+                    # For each day, get the price and see if it is more than the higher bound
+                    testdayprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], current_day)
+                    if testdayprice > stable_price_higher_bound or testdayprice < stable_price_lower_bound:
+                        # Out of range, not stable
+                        stable = False
+                        break
+
+                if stable:                    
+                    self.api.sendMessage(f"Stable watch: {watch['fsym']} at {todaysprice} is within +/- {watch['target']} range for {durationindays} days ", watch['chatId'])
+                    if not persistent:
+                        self.log.debug("removing completed Stable watch")
+                        del self.db['watches'][i]
+                    else:
+                        # set the most recent notify key as now epoch as int
+                        self.db['watches'][i]['last_notify'] = int(datetime.now().timestamp()) * 1000                        
+                        i += 1
+                else:
+                    i += 1
+                 
             else: # this item is invalid, delete it
                 self.log.error(f"invalid watch op: {watch['op']}")
                 del self.db['watches'][i]
@@ -234,27 +290,38 @@ class TgBotService(object):
         self.last_update = self.db['last_update'] if 'last_update' in self.db else 0
         # main loop
         loop = True
+        sequence_id = 0
         while loop:
-            # delay for 2 seconds
-            time.sleep(4)
-
-
+            sequence_id += 1
+            time.sleep(1)
             try:                
                 updates = self.api.getUpdates(self.last_update)   
  
                 if updates is None:
                     self.log.error('get update request failed')
                 else:
-                    self.processUpdates(updates)
-                try:
-                    self.processAlerts()
-                except:
-                    self.log.exception("exception at processing alerts")
-                try:
-                    self.processWatches()
-                except:
-                    self.log.exception("exception at processing watches")
-                time.sleep(1)            
+                    if len(updates) > 0:
+                        self.processUpdates(updates)
+                        # if we have just done an update then we should process alerts and watches
+                        self.processAlerts
+                        self.processWatches
+
+                # processing Alerts is quite cheap, do it every 3 seconds, if the current_seconds mod 2 = 0 then
+                if sequence_id % 3 == 0:
+                    try:
+                        self.processAlerts()
+                    except:
+                        self.log.exception("exception at processing alerts")
+
+                # processing watches is quite expensive, do it every 29 seconds, if the current_seconds mod 10 = 0
+                if sequence_id % 29 == 0:
+                    try:
+                        self.processWatches()
+                    except:
+                        self.log.exception("exception at processing watches")
+
+                
+
             except KeyboardInterrupt:
                 self.log.info("interrupt received, stopping…")
                 loop = False

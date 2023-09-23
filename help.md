@@ -68,7 +68,7 @@ Check if a coin has dropped by a percentage
 
 
 **/watch**
-Command structured 
+Command structured for checking if the price has risen, dropped or is stable
 
 Example:
 `/watch btc drop 50% 14 days` (Percentage drop)  
@@ -86,6 +86,9 @@ Example:
 `/watch btc drop 5000 from ath persistent daily`
   
 Comparisons are vs current price unless "from ath" is set   
+
+Example of stable:
+`/watch btc stable 1% 1 week` Checks that the daily price for the last week have all been within 1% +/-  of the current price. e.g. the price is stable.
 
 **/showwatches**
 Show the watches
