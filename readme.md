@@ -71,7 +71,7 @@ Check if a coin has dropped by a percentage
 
 
 **/watch**
-Command structured 
+Command structured for checking if the price has risen, dropped or is stable
 
 Example:
 `/watch btc drop 50% 14 days` (Percentage drop)  
@@ -79,14 +79,27 @@ Example:
 `/watch btc drop 5000 2 days` (absolute value drop)  
 `/watch btc drop 5000 from ath`  
 `/watch btc drop 75% from ath`  
+
+Optionally watch commands have have a "persist" keywords so they don't get deleted when they fire
+but will repeat. Minimum frequency is default 1 day but can be set to hourly, weekly or by the minute. Such watches have to be manually deleted
+using the `/delete` command when you don't want them any more.
+
+Example:
+`/watch btc drop 50% 14 days persist`
+`/watch btc drop 5000 from ath persistent daily`
   
 Comparisons are vs current price unless "from ath" is set   
+
+Example of stable:
+`/watch btc stable 1% 1 week` Checks that the daily price for the last week have all been within 1% +/-  of the current price. e.g. the price is stable.
+
+**/showwatches**
+Show the watches
 
 **/ath**
 What is the ATH of a coin (only checks back to Oct 2021)
 
 `/ath BTC`
-
 
 **/delete**
 Delete alerts or watches.
@@ -96,23 +109,10 @@ Delete alerts or watches.
 `/delete 1234` Delete alert or watch with ID 1234.
 
 
-
 **/help**  
 See this message.
 
-
-Commands
-
-`price - get the price for desired coin
-p - same as /price
-chart - chart for a coin at timeframe (5m, 15m, 1h, 4h, 1d, 1w, etc)
-ch - same as /chart
-top - See the current prices of the top coins + market cap
-lower - get notified when price goes LOWER than specified number
-higher - get notified when price goes HIGHER than specified number
-alerts - get current alert
-clear - clear current alert
-help - get help about commands`
-
-
 for further help or discussion please use the telegram group https://t.me/alertbotgang
+
+Contributors
+ - https://github.com/raymondclowe
