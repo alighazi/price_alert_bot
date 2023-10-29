@@ -27,6 +27,7 @@ class CommandHandler:
             text = message['text']
             chatId = message['chat']['id']
             command = text.partition('/')[2]
+            command = command.split('@')[0].strip()  # Remove the username or bot name if present
             self.log.info(f'handling command "{command}"')
 
             if command == 'start' or command == 'help':
