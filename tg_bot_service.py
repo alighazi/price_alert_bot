@@ -254,16 +254,42 @@ class TgBotService(object):
                 self.log.exception(f"error processing update: {update}")
 
 
-    def persist_db(self):
-        self.log.debug('persisting db')
-        if hashlib.md5(repr(self.db).encode('utf-8')).hexdigest() == self.dbmd5:
-            self.log.debug('no change')
-        else:
-            cache.log.debug('write to disk and update md5')
-            with open(config.DB_FILENAME, 'wb') as fp:
-                pickle.dump(self.db, fp)
-            self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
+import os
 
+def persist_db(self):
+    self.log.debug('persisting db')
+    new_filename = config.DB_FILENAME + ".temp"  # New temporary file name
+    
+    if hashlib.md5(repr(self.db).encode('utf-8')).hexdigest() == self.dbmd5:
+        self.log.debug('no change')
+    else:
+        self.log.debug('writing data to a new file')
+
+        # Write data to the new temporary file
+        with open(new_filename, 'wb') as fp:
+            pickle.dump(self.db, fp)
+        
+        # Perform file operations after confirming the data is saved to the new file
+        if os.path.isfile(new_filename):
+            self.log.debug('renaming files and creating backup')
+            
+            # Remove old backup file if it exists
+            backup_filename = config.DB_FILENAME + ".backup"
+            if os.path.isfile(backup_filename):
+                os.remove(backup_filename)
+            
+            try:
+                # Rename the current file to a backup file
+                os.rename(config.DB_FILENAME, backup_filename)
+                
+                # Rename the new temporary file to the current file
+                os.rename(new_filename, config.DB_FILENAME)
+                
+                self.log.debug('file persistence completed')
+            except Exception as e:
+                self.log.error('error occurred during file operations: {}'.format(str(e)))
+        else:
+            self.log.debug('data not saved to the new file')
 
     def run(self, debug=False):
         self.log = logger_config.instance
@@ -274,14 +300,29 @@ class TgBotService(object):
 
         cache.log = self.log
         try:
-            with open(config.DB_FILENAME, 'rb') as fp:
-                self.db = pickle.load(fp)
-            self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
-        except:
-            self.log.exception("error loading db, defaulting to empty db")
+            # Check if the current data file exists and is non-zero
+            if os.path.isfile(config.DB_FILENAME) and os.path.getsize(config.DB_FILENAME) > 0:
+                with open(config.DB_FILENAME, 'rb') as fp:
+                    self.db = pickle.load(fp)
+                self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
+            else:
+                self.log.debug("Current data file is missing or empty.")
+                # Check if a backup file exists
+                backup_filename = config.DB_FILENAME + ".backup"
+                if os.path.isfile(backup_filename) and os.path.getsize(backup_filename) > 0:
+                    with open(backup_filename, 'rb') as fp:
+                        self.db = pickle.load(fp)
+                    self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
+                    self.log.debug("Loaded data from the backup file.")
+                else:
+                    self.log.debug("Both current and backup files are missing or empty. Creating an empty database.")
+                    self.db = {}
+                    self.dbmd5 = ""
+        except Exception as e:
+            self.log.exception("Error loading data: {}".format(str(e)))
             self.db = {}
             self.dbmd5 = ""
-
+            
         self.api = TgApi(self.log)
         self.repository = MarketRepository(self.log)
         self.command_handler = CommandHandler(self.api, self.repository, self.db, self.log)
