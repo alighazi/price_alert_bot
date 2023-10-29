@@ -1,6 +1,6 @@
 import hashlib
 import traceback
-import math, time, requests, pickle, traceback, sys
+import math, time, requests, pickle, traceback, sys, os
 from datetime import datetime, timedelta
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -254,127 +254,127 @@ class TgBotService(object):
                 self.log.exception(f"error processing update: {update}")
 
 
-import os
 
-def persist_db(self):
-    self.log.debug('persisting db')
-    new_filename = config.DB_FILENAME + ".temp"  # New temporary file name
-    
-    if hashlib.md5(repr(self.db).encode('utf-8')).hexdigest() == self.dbmd5:
-        self.log.debug('no change')
-    else:
-        self.log.debug('writing data to a new file')
 
-        # Write data to the new temporary file
-        with open(new_filename, 'wb') as fp:
-            pickle.dump(self.db, fp)
+    def persist_db(self):
+        self.log.debug('persisting db')
+        new_filename = config.DB_FILENAME + ".temp"  # New temporary file name
         
-        # Perform file operations after confirming the data is saved to the new file
-        if os.path.isfile(new_filename):
-            self.log.debug('renaming files and creating backup')
-            
-            # Remove old backup file if it exists
-            backup_filename = config.DB_FILENAME + ".backup"
-            if os.path.isfile(backup_filename):
-                os.remove(backup_filename)
-            
-            try:
-                # Rename the current file to a backup file
-                os.rename(config.DB_FILENAME, backup_filename)
-                
-                # Rename the new temporary file to the current file
-                os.rename(new_filename, config.DB_FILENAME)
-                
-                self.log.debug('file persistence completed')
-            except Exception as e:
-                self.log.error('error occurred during file operations: {}'.format(str(e)))
+        if hashlib.md5(repr(self.db).encode('utf-8')).hexdigest() == self.dbmd5:
+            self.log.debug('no change')
         else:
-            self.log.debug('data not saved to the new file')
+            self.log.debug('writing data to a new file')
+
+            # Write data to the new temporary file
+            with open(new_filename, 'wb') as fp:
+                pickle.dump(self.db, fp)
+            
+            # Perform file operations after confirming the data is saved to the new file
+            if os.path.isfile(new_filename):
+                self.log.debug('renaming files and creating backup')
+                
+                # Remove old backup file if it exists
+                backup_filename = config.DB_FILENAME + ".backup"
+                if os.path.isfile(backup_filename):
+                    os.remove(backup_filename)
+                
+                try:
+                    # Rename the current file to a backup file
+                    os.rename(config.DB_FILENAME, backup_filename)
+                    
+                    # Rename the new temporary file to the current file
+                    os.rename(new_filename, config.DB_FILENAME)
+                    
+                    self.log.debug('file persistence completed')
+                except Exception as e:
+                    self.log.error('error occurred during file operations: {}'.format(str(e)))
+            else:
+                self.log.debug('data not saved to the new file')
 
     def run(self, debug=False):
-        self.log = logger_config.instance
-        if debug:
-            self.log.setLevel(logger_config.logging.DEBUG)
-        else:
-            self.log.setLevel(logger_config.logging.INFO)
-
-        cache.log = self.log
-        try:
-            # Check if the current data file exists and is non-zero
-            if os.path.isfile(config.DB_FILENAME) and os.path.getsize(config.DB_FILENAME) > 0:
-                with open(config.DB_FILENAME, 'rb') as fp:
-                    self.db = pickle.load(fp)
-                self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
+            self.log = logger_config.instance
+            if debug:
+                self.log.setLevel(logger_config.logging.DEBUG)
             else:
-                self.log.debug("Current data file is missing or empty.")
-                # Check if a backup file exists
-                backup_filename = config.DB_FILENAME + ".backup"
-                if os.path.isfile(backup_filename) and os.path.getsize(backup_filename) > 0:
-                    with open(backup_filename, 'rb') as fp:
+                self.log.setLevel(logger_config.logging.INFO)
+
+            cache.log = self.log
+            try:
+                # Check if the current data file exists and is non-zero
+                if os.path.isfile(config.DB_FILENAME) and os.path.getsize(config.DB_FILENAME) > 0:
+                    with open(config.DB_FILENAME, 'rb') as fp:
                         self.db = pickle.load(fp)
                     self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
-                    self.log.debug("Loaded data from the backup file.")
                 else:
-                    self.log.debug("Both current and backup files are missing or empty. Creating an empty database.")
-                    self.db = {}
-                    self.dbmd5 = ""
-        except Exception as e:
-            self.log.exception("Error loading data: {}".format(str(e)))
-            self.db = {}
-            self.dbmd5 = ""
-            
-        self.api = TgApi(self.log)
-        self.repository = MarketRepository(self.log)
-        self.command_handler = CommandHandler(self.api, self.repository, self.db, self.log)
+                    self.log.debug("Current data file is missing or empty.")
+                    # Check if a backup file exists
+                    backup_filename = config.DB_FILENAME + ".backup"
+                    if os.path.isfile(backup_filename) and os.path.getsize(backup_filename) > 0:
+                        with open(backup_filename, 'rb') as fp:
+                            self.db = pickle.load(fp)
+                        self.dbmd5 = hashlib.md5(repr(self.db).encode('utf-8')).hexdigest()
+                        self.log.debug("Loaded data from the backup file.")
+                    else:
+                        self.log.debug("Both current and backup files are missing or empty. Creating an empty database.")
+                        self.db = {}
+                        self.dbmd5 = ""
+            except Exception as e:
+                self.log.exception("Error loading data: {}".format(str(e)))
+                self.db = {}
+                self.dbmd5 = ""
 
-        self.log.debug("db at start: {}".format(self.db))
-        self.last_update = self.db['last_update'] if 'last_update' in self.db else 0
-        # main loop
-        loop = True
-        sequence_id = 0
-        while loop:
-            sequence_id += 1
-            time.sleep(1)
-            try:                
-                updates = self.api.getUpdates(self.last_update)   
- 
-                if updates is None:
-                    self.log.error('get update request failed')
-                else:
-                    if len(updates) > 0:
-                        self.processUpdates(updates)
-                        # if we have just done an update then we should process alerts and watches
-                        self.processAlerts
-                        self.processWatches
+            self.api = TgApi(self.log)
+            self.repository = MarketRepository(self.log)
+            self.command_handler = CommandHandler(self.api, self.repository, self.db, self.log)
 
-                # processing Alerts is quite cheap, do it every 3 seconds, if the current_seconds mod 2 = 0 then
-                if sequence_id % 3 == 0:
-                    try:
-                        self.processAlerts()
-                    except:
-                        self.log.exception("exception at processing alerts")
+            self.log.debug("db at start: {}".format(self.db))
+            self.last_update = self.db['last_update'] if 'last_update' in self.db else 0
+            # main loop
+            loop = True
+            sequence_id = 0
+            while loop:
+                sequence_id += 1
+                time.sleep(1)
+                try:                
+                    updates = self.api.getUpdates(self.last_update)   
+    
+                    if updates is None:
+                        self.log.error('get update request failed')
+                    else:
+                        if len(updates) > 0:
+                            self.processUpdates(updates)
+                            # if we have just done an update then we should process alerts and watches
+                            self.processAlerts
+                            self.processWatches
 
-                # processing watches is quite expensive, do it every 29 seconds, if the current_seconds mod 10 = 0
-                if sequence_id % 29 == 0:
-                    try:
-                        self.processWatches()
-                    except:
-                        self.log.exception("exception at processing watches")
+                    # processing Alerts is quite cheap, do it every 3 seconds, if the current_seconds mod 2 = 0 then
+                    if sequence_id % 3 == 0:
+                        try:
+                            self.processAlerts()
+                        except:
+                            self.log.exception("exception at processing alerts")
 
-                
+                    # processing watches is quite expensive, do it every 29 seconds, if the current_seconds mod 10 = 0
+                    if sequence_id % 29 == 0:
+                        try:
+                            self.processWatches()
+                        except:
+                            self.log.exception("exception at processing watches")
 
-            except KeyboardInterrupt:
-                self.log.info("interrupt received, stopping…")
-                loop = False
-            except requests.exceptions.ConnectionError as e:
-                # A serious problem happened, like DNS failure, refused connection, etc.
-                updates = None   
-            except:            
-                self.log.exception("exception at processing updates")
-                loop = False
+                    
 
-            self.persist_db()
-            cache.persist()
+                except KeyboardInterrupt:
+                    self.log.info("interrupt received, stopping…")
+                    loop = False
+                except requests.exceptions.ConnectionError as e:
+                    # A serious problem happened, like DNS failure, refused connection, etc.
+                    updates = None   
+                except:            
+                    self.log.exception("exception at processing updates")
+                    loop = False
+
+                self.persist_db()
+                cache.persist()
 
 if __name__ == "__main__":
     service = TgBotService()
