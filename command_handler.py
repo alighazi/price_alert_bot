@@ -324,7 +324,13 @@ class CommandHandler:
         self.db['watches'].append( watch) 
         # self.api.sendMessage("Watch added", chatId)
 
-        resp = 'Watching {} {} {} {} {} {} {}'.format(fsym, op, parts[3], parts[4], parts[5], parts[6], parts[7])
+        # resp = 'Watching {} {} {} {} {} {} {}'.format(fsym, op, parts[3], parts[4], parts[5], parts[6], parts[7])
+        resp = 'Watching {} {}'.format(fsym, op)  # Initialize the resp string with the first two variables
+
+        for part in parts[3:]:
+            resp += ' {}'.format(part)  # Concatenate each part to the resp string
+
+
 
         self.api.sendMessage(resp, chatId)
         return
