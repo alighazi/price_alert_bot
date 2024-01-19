@@ -92,6 +92,11 @@ class RestApiBinance:
 
         # get the HIGH price from the second value of the first item in the json response
         # print('about to fail')
+        # sometimes the json is empty
+        if len(r.json()) == 0:
+            self.logger.debug("response was empty list")
+            return None
+
         return float(r.json()[0][2])
 
 

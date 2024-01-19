@@ -185,7 +185,7 @@ class TgBotService(object):
                         continue
 
                 # get current price
-                todaysprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], datetime.now())
+                currentprice = self.repository.get_price(watch['fsym'], watch['tsym'])
 
                 if '%' in watch['target']:
                     pricerangepercentage = float(watch['target'].replace('%', ''))
@@ -195,11 +195,11 @@ class TgBotService(object):
 
                 # work out the bounds
                 #   stable_price_lower_bound
-                stable_price_lower_bound = todaysprice - pricerange
+                stable_price_lower_bound = currentprice - pricerange
 
 
                 #   stable_price_higher_bound
-                stable_price_higher_bound = todaysprice + pricerange
+                stable_price_higher_bound = currentprice + pricerange
                 
                 stable = True
                 testday_datetime = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -210,13 +210,15 @@ class TgBotService(object):
                     
                     # For each day, get the price and see if it is more than the higher bound
                     testdayprice = self.repository.get_day_price(watch['fsym'], watch['tsym'], current_day)
+                    if day == 0 and testdayprice == None: # sometimes binance won't say todays price, so we get current price instead
+                        testdayprice = self.repository.get_price(watch['fsym'], watch['tsym'])
                     if testdayprice > stable_price_higher_bound or testdayprice < stable_price_lower_bound:
                         # Out of range, not stable
                         stable = False
                         break
 
                 if stable:                    
-                    self.api.sendMessage(f"Stable watch: {watch['fsym']} at {todaysprice} is within +/- {watch['target']} range for {durationindays} days ", watch['chatId'])
+                    self.api.sendMessage(f"Stable watch: {watch['fsym']} at {currentprice} is within +/- {watch['target']} range for {durationindays} days ", watch['chatId'])
                     if not persistent:
                         self.log.debug("removing completed Stable watch")
                         del self.db['watches'][i]
@@ -291,7 +293,7 @@ class TgBotService(object):
             else:
                 self.log.debug('data not saved to the new file')
 
-    def run(self, debug=False):
+    def run(self, debug=True):
             self.log = logger_config.instance
             if debug:
                 self.log.setLevel(logger_config.logging.DEBUG)
@@ -378,7 +380,8 @@ class TgBotService(object):
 
 if __name__ == "__main__":
     service = TgBotService()
-    debug= False
+    debug= True
     if len(sys.argv) > 1 and sys.argv[1] == "debug":
         debug=True
+    debug = True
     service.run(debug)
