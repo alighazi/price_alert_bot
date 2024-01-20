@@ -382,6 +382,5 @@ if __name__ == "__main__":
     service = TgBotService()
     debug= True
     if len(sys.argv) > 1 and sys.argv[1] == "debug":
-        debug=True
-    debug = True
+        debug=True    
     service.run(debug)
