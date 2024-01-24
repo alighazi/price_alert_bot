@@ -1,0 +1,15 @@
+price - Get the price for desired coin
+chart - Get chart for a coin at a timeframe 
+top - See the current prices of the top coins and market cap.
+lower - Get notified when price of desired symbol goes LOWER than specified number
+higher - Get notified when price of desired symbol goes HIGHER than specified number.
+alerts - Get the current alerts.
+clear - Clear current alerts.
+yesterday - Price yesterday for a coin
+history - Historical price of a coin in the past. Supports days, weeks, months, years.
+dropby - Check if a coin has dropped by a percentage
+watch - Watch for coin to drop or rise by amount or percentage over period exact
+showwatches - Show the watches
+ath - What is the ATH of a coin (only checks back to Oct 2021)
+delete - Delete one alert or watch by ID. Use without param for list of IDs.
+help - See detailed help with examples

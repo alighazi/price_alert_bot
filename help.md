@@ -45,10 +45,7 @@ Get the current alerts.
 
 **/clear**  
 Clear current alerts.
-
-**/yesterday**
-Price yesterday for a coin
-
+ 
 **/history**
 Historical price of a coin in the past. Supports days, weeks, months, years.
 
@@ -71,7 +68,7 @@ Check if a coin has dropped by a percentage
 
 
 **/watch**
-Command structured 
+Command structured for checking if the price has risen, dropped or is stable
 
 Example:
 `/watch btc drop 50% 14 days` (Percentage drop)  
@@ -79,8 +76,19 @@ Example:
 `/watch btc drop 5000 2 days` (absolute value drop)  
 `/watch btc drop 5000 from ath`  
 `/watch btc drop 75% from ath`  
+
+Optionally watch commands have have a "persist" keywords so they don't get deleted when they fire
+but will repeat. Minimum frequency is default 1 day but can be set to hourly, weekly or by the minute. Such watches have to be manually deleted
+using the `/delete` command when you don't want them any more.
+
+Example:
+`/watch btc drop 50% 14 days persist`
+`/watch btc drop 5000 from ath persistent daily`
   
 Comparisons are vs current price unless "from ath" is set   
+
+Example of stable:
+`/watch btc stable 1% 1 week` Checks that the daily price for the last week have all been within 1% +/-  of the current price. e.g. the price is stable.
 
 **/showwatches**
 Show the watches
@@ -89,6 +97,13 @@ Show the watches
 What is the ATH of a coin (only checks back to Oct 2021)
 
 `/ath BTC`
+
+**/delete**
+Delete alerts or watches.
+
+`/delete` Show list of alerts and watches with delete IDs.
+
+`/delete 1234` Delete alert or watch with ID 1234.
 
 
 **/help**  

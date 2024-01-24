@@ -20,7 +20,7 @@ def get_logger(name = ""):
     logger.addHandler(th)
 
     rh = logging.handlers.RotatingFileHandler(filename="log/error.log",maxBytes=1024*1024, backupCount=30, encoding="utf-8")
-    rh.setLevel(logging.ERROR)
+    rh.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s: %(message)s')
     rh.setFormatter(formatter)
     logger.addHandler(rh)
