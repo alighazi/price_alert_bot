@@ -57,7 +57,7 @@ class MarketRepository(object):
         out = out+'`'
         return out
     
-
+    @cache("market.get_price", 60 * 5)
     def get_price(self, fsym, tsym):
         symbol = (fsym+tsym).upper()
         return self.binance_api.get_prices()[symbol]

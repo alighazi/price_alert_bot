@@ -2,7 +2,9 @@
 share/
 nohup.out*
 log/
+data/
 bin/
+ai-*
 easy_*
 pip*
 python*
@@ -131,3 +133,5 @@ bin/pip3
 bin/pip3.6
 bin/python
 bin/python3
+data/db.pickle.prod
+backup-data.sh

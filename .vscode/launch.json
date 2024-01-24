@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Python: tg_bot_service.py",
             "type": "python",
             "request": "launch",
             "program": "tg_bot_service.py",
