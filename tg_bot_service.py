@@ -281,11 +281,13 @@ class TgBotService(object):
                     os.remove(backup_filename)
                 
                 try:
-                    # Rename the current file to a backup file
-                    os.rename(config.DB_FILENAME, backup_filename)
-                    
+                    if os.path.isfile(config.DB_FILENAME):
+                        # Rename the current file to a backup file
+                        os.rename(config.DB_FILENAME, backup_filename)
+
                     # Rename the new temporary file to the current file
                     os.rename(new_filename, config.DB_FILENAME)
+
                     
                     self.log.debug('file persistence completed')
                 except Exception as e:

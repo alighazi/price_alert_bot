@@ -6,8 +6,9 @@
     "configurations": [
         {
             "name": "Python: tg_bot_service.py",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
+            
             "program": "tg_bot_service.py",
             "console": "integratedTerminal",
             "args": [
