@@ -7,12 +7,14 @@ from os import remove,listdir
 
 from cache import cache
 from api.binance_rest import RestApiBinance,CandleInterval
+from api.kukoin_rest import RestApiKukoin
 from draw_candles import DrawChart
 
 class MarketRepository(object):  
     def __init__(self, log):
         self.log = log
         self.binance_api = RestApiBinance()
+        self.kucoin_api = RestApiKukoin()
 
     @cache("market.getdayprice", 3600, [1,2,3])
     def get_day_price(self, fsym, tsym, queryday):
@@ -26,15 +28,14 @@ class MarketRepository(object):
     @cache("market.symbols", 3600)
     def get_symbols(self):
         symbols = self.binance_api.get_symbols()
+        kucoin_syms= self.kucoin_api.get_symbols()
+
+        k
         return symbols        
 
     @cache("market.ath", 86400, [1,2]) # 1 day is 86400 seconds, cache vary by symbol
     def get_ath(self, fsym, tsym):
-        tsym = "USDT"  
-                
         return self.binance_api.get_ath(fsym, tsym)
-
-
 
     TSYMS = ['BTC','USDT','BNB', 'ETH', 'EUR']
     def isPricePairValid(self, fsym, tsym):
