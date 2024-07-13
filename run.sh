@@ -1,4 +1,5 @@
 source venv/bin/activate
+mkdir -p log
 logfile="price.log"
 if [ -f "$logfile" ] 
 then mv "$logfile" "$logfile.$(date +%F-%T)"
